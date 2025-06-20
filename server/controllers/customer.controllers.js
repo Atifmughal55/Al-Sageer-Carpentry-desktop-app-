@@ -14,6 +14,7 @@ export const getAllCustomers = async (req, res) => {
     res.status(200).json({
       success: true,
       error: false,
+      message: "Customers fetched successfully",
       totalCustomer: customers.length,
       data: customers,
     });

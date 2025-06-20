@@ -1,35 +1,48 @@
 import React from "react";
 import { MdEdit, MdDelete } from "react-icons/md";
-
+import toast from "react-hot-toast";
+import Axios from "../utils/Axios";
+import SummaryApi from "../common/SummaryApi";
+import { useEffect } from "react";
+import { useState } from "react";
 // Dummy data
-const dummyCustomers = [
-  {
-    id: 1,
-    name: "John Doe",
-    contact: "+923001234567",
-    purchases: 5,
-    totalBill: 8000,
-    paid: 6000,
-  },
-  {
-    id: 2,
-    name: "Ayesha Khan",
-    contact: "+923009876543",
-    purchases: 3,
-    totalBill: 4500,
-    paid: 4500,
-  },
-  {
-    id: 3,
-    name: "Ali Raza",
-    contact: "+923004567890",
-    purchases: 7,
-    totalBill: 12000,
-    paid: 3000,
-  },
-];
 
 const Customers = () => {
+  const [allCustomers, setAllCustomers] = useState([]);
+  const fetchAllCustomers = async () => {
+    try {
+      const response = await Axios({
+        ...SummaryApi.getAllCustomers,
+      });
+      const { data: responseData } = response;
+
+      if (responseData.success) {
+        toast.success(responseData.message);
+        setAllCustomers(responseData.data);
+      }
+    } catch (error) {
+      toast.error("Something went wrong");
+    }
+  };
+
+  const deleteCustomer = async (id) => {
+    try {
+      const response = await Axios({
+        ...SummaryApi.deleteCustomer,
+        url: `${SummaryApi.deleteCustomer.url}/${id}`,
+      });
+      const { data: responseData } = response;
+      if (responseData.success) {
+        toast.success(responseData.message);
+        fetchAllCustomers();
+      }
+    } catch (error) {
+      toast.error("Something went wrong while deleting customer");
+    }
+  };
+  useEffect(() => {
+    fetchAllCustomers();
+  }, []);
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -47,16 +60,14 @@ const Customers = () => {
             <tr>
               <th className="py-3 px-4 text-left">#</th>
               <th className="py-3 px-4 text-left">Customer Name</th>
-              <th className="py-3 px-4 text-left">Contact</th>
-              <th className="py-3 px-4 text-left">Purchases</th>
-              <th className="py-3 px-4 text-left">Total Bill</th>
-              <th className="py-3 px-4 text-left">Pending Dues</th>
+              <th className="py-3 px-4 text-left">Email</th>
+              <th className="py-3 px-4 text-left">Phone</th>
+              <th className="py-3 px-4 text-left">Address</th>
               <th className="py-3 px-4 text-left">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {dummyCustomers.map((customer, index) => {
-              const pending = customer.totalBill - customer.paid;
+            {allCustomers.map((customer, index) => {
               return (
                 <tr
                   key={customer.id}
@@ -64,27 +75,18 @@ const Customers = () => {
                 >
                   <td className="py-3 px-4">{index + 1}</td>
                   <td className="py-3 px-4">{customer.name}</td>
-                  <td className="py-3 px-4">{customer.contact}</td>
-                  <td className="py-3 px-4">{customer.purchases}</td>
-                  <td className="py-3 px-4">Rs {customer.totalBill}</td>
-                  <td className="py-3 px-4">
-                    Rs {pending}
-                    {pending > 0 ? (
-                      <span className="ml-2 text-sm font-medium text-red-600 bg-red-100 px-2 py-0.5 rounded-full">
-                        Due
-                      </span>
-                    ) : (
-                      <span className="ml-2 text-sm font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded-full">
-                        Clear
-                      </span>
-                    )}
-                  </td>
+                  <td className="py-3 px-4">{customer.email}</td>
+                  <td className="py-3 px-4">{customer.phone}</td>
+                  <td className="py-3 px-4">{customer.address}</td>
                   <td className="py-3 px-4">
                     <div className="flex gap-2">
                       <button className="p-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white">
                         <MdEdit />
                       </button>
-                      <button className="p-2 rounded-md bg-red-500 hover:bg-red-600 text-white">
+                      <button
+                        onClick={() => deleteCustomer(customer.id)}
+                        className="p-2 rounded-md bg-red-500 hover:bg-red-600 text-white"
+                      >
                         <MdDelete />
                       </button>
                     </div>
