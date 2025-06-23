@@ -38,3 +38,10 @@ export const updateCustomerModel = (id, db, data) => {
 export const deleteCustomerModel = (id, db) => {
   return db.run(`DELETE FROM customers WHERE id = ?`, [id]);
 };
+
+export const getCustomerByFieldsModel = (db, data) => {
+  return db.get(`SELECT * FROM customers WHERE email = ? OR phone = ?`, [
+    data.email,
+    data.phone,
+  ]);
+};

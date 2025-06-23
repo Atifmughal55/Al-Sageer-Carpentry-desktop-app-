@@ -8,10 +8,10 @@ export const createTables = async (db) => {
       email TEXT UNIQUE,
       phone TEXT UNIQUE,
       address TEXT,
-      trn TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  // await db.exec(`DROP TABLE IF EXISTS customers`);
 
   await db.exec(`
     CREATE TABLE IF NOT EXISTS quotations (
@@ -27,6 +27,7 @@ export const createTables = async (db) => {
     );
   `);
 
+  // await db.exec(`DROP TABLE IF EXISTS quotations`);
   await db.exec(`
     CREATE TABLE IF NOT EXISTS quotation_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,6 +42,7 @@ export const createTables = async (db) => {
       FOREIGN KEY (quotation_id) REFERENCES quotations(id)
     );
   `);
+  // await db.exec(`DROP TABLE IF EXISTS quotation_items`);
 
   await db.exec(`
     CREATE TABLE IF NOT EXISTS invoices (

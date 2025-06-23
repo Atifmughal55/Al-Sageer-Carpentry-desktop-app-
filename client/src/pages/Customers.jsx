@@ -5,10 +5,13 @@ import Axios from "../utils/Axios";
 import SummaryApi from "../common/SummaryApi";
 import { useEffect } from "react";
 import { useState } from "react";
+import CustomerEditModel from "../components/CustomerEditModel";
 // Dummy data
 
 const Customers = () => {
   const [allCustomers, setAllCustomers] = useState([]);
+  const [openEditCustomerModel, setOpenEditCustomerModel] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState();
   const fetchAllCustomers = async () => {
     try {
       const response = await Axios({
@@ -40,6 +43,26 @@ const Customers = () => {
       toast.error("Something went wrong while deleting customer");
     }
   };
+
+  const handleSave = async (formData) => {
+    try {
+      const response = await Axios({
+        ...SummaryApi.updateCustomer,
+        url: `${SummaryApi.updateCustomer.url}/${selectedCustomer.id}`,
+        data: formData,
+      });
+
+      const { data: responseData } = response;
+      if (responseData.success) {
+        toast.success(responseData.message);
+        setOpenEditCustomerModel(false); // Close modal
+        fetchAllCustomers(); // Refresh list
+      }
+    } catch (error) {
+      toast.error("Something went wrong");
+    }
+  };
+
   useEffect(() => {
     fetchAllCustomers();
   }, []);
@@ -80,7 +103,13 @@ const Customers = () => {
                   <td className="py-3 px-4">{customer.address}</td>
                   <td className="py-3 px-4">
                     <div className="flex gap-2">
-                      <button className="p-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white">
+                      <button
+                        onClick={() => {
+                          setOpenEditCustomerModel(true);
+                          setSelectedCustomer(customer);
+                        }}
+                        className="p-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white"
+                      >
                         <MdEdit />
                       </button>
                       <button
@@ -97,6 +126,14 @@ const Customers = () => {
           </tbody>
         </table>
       </div>
+      {openEditCustomerModel && (
+        <CustomerEditModel
+          customer={selectedCustomer}
+          close={() => setOpenEditCustomerModel(false)}
+          cancel={() => setOpenEditCustomerModel(false)}
+          onSave={handleSave}
+        />
+      )}
     </div>
   );
 };

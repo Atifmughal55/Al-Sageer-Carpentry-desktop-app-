@@ -1,43 +1,53 @@
 import { toWords as convertToWords } from "number-to-words";
 import toast from "react-hot-toast";
 import { MdPrint } from "react-icons/md";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 
 const QuotationPrint = () => {
   const navigate = useNavigate();
-  const { state } = useLocation();
-  const {
-    quotationNo,
-    customerName,
-    projectName,
-    note,
-    totals,
-    items = [],
-    date,
-  } = state || {};
-
+  const { quotationData, quotationItems } = useSelector(
+    (state) => state.quotation
+  );
+  console.log("QuotationData: ", quotationData);
+  console.log("quotationItems: ", quotationItems);
   const getItemCalculations = (item) => {
-    const baseAmount = item.unitPrice * item.quantity;
-    const discountPerUnit = (item.unitPrice * item.discount) / 100;
-    const netUnitPrice = item.unitPrice - discountPerUnit;
-    const discountAmount = discountPerUnit * item.quantity;
-    const netAmount = netUnitPrice * item.quantity;
-    const total = netAmount;
+    const quantity = Number(item?.quantity) || 0;
+    const unitPrice = Number(item?.unit_price) || 0;
+    const baseAmount = unitPrice * quantity;
 
     return {
-      baseAmount,
-      discountAmount,
-      netAmount,
-      total,
+      netAmount: baseAmount,
+      total: baseAmount,
     };
+  };
+
+  // ✅ Calculate Totals
+  const totals = quotationItems.reduce(
+    (acc, item) => {
+      const calc = getItemCalculations(item);
+      acc.net += calc.total;
+      acc.quantity += item.quantity;
+      return acc;
+    },
+    { net: 0, quantity: 0 }
+  );
+
+  const toWords = (num) => {
+    try {
+      const words = convertToWords(num);
+      return `${words.charAt(0).toUpperCase() + words.slice(1)} dirhams only`;
+    } catch {
+      return "Invalid number";
+    }
   };
 
   const handlePrint = () => {
     const printContent = document.getElementById("print-section").innerHTML;
     const styles = Array.from(document.styleSheets)
-      .map((styleSheet) =>
-        Array.from(styleSheet.cssRules || [])
-          .map((rule) => rule.cssText)
+      .map((s) =>
+        Array.from(s.cssRules || [])
+          .map((r) => r.cssText)
           .join("")
       )
       .join("");
@@ -45,13 +55,8 @@ const QuotationPrint = () => {
     const printWindow = window.open("", "", "width=800,height=600");
     printWindow.document.write(`
       <html>
-        <head>
-          <title>Quotation</title>
-          <style>${styles}</style>
-        </head>
-        <body onload="window.print(); window.close();">
-          ${printContent}
-        </body>
+        <head><title>Quotation</title><style>${styles}</style></head>
+        <body onload="window.print(); window.close();">${printContent}</body>
       </html>
     `);
     printWindow.document.close();
@@ -59,18 +64,9 @@ const QuotationPrint = () => {
     navigate("/dashboard");
   };
 
-  const toWords = (num) => {
-    try {
-      const words = convertToWords(num);
-      return `${words.charAt(0).toUpperCase() + words.slice(1)} dirhams only`;
-    } catch (error) {
-      return "Invalid number";
-    }
-  };
-
-  console.log("Total: ", totals);
   return (
     <div className="max-w-[21cm] mx-auto p-6 bg-white text-black text-xs font-sans">
+      {/* Print Button */}
       <div className="flex justify-end">
         <button
           onClick={handlePrint}
@@ -81,7 +77,9 @@ const QuotationPrint = () => {
         </button>
       </div>
 
+      {/* Printable Section */}
       <div id="print-section">
+        {/* HEADER */}
         <div className="text-center mb-2">
           <h1 className="text-xl font-bold">
             <span className="text-sm">AL</span> SAGEER CARPENTRY{" "}
@@ -99,10 +97,7 @@ const QuotationPrint = () => {
           </p>
         </div>
 
-        <div className="print:block hidden absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rotate-45 text-6xl font-bold text-gray-300 opacity-30 pointer-events-none select-none whitespace-nowrap z-0">
-          Al Sageer Carpentry
-        </div>
-
+        {/* Contact & Quotation Info */}
         <div className="flex justify-between text-sm mb-4 border-y py-2">
           <div>
             <div>Mob: 055-6172832</div>
@@ -111,8 +106,8 @@ const QuotationPrint = () => {
             <div>Abu Dhabi - UAE</div>
           </div>
           <div className="text-center">
-            <div className="border-2 border-black inline-block font-semibold">
-              <h1 className="px-10 py-2">QUOTATION</h1>
+            <div className="border-2 border-black inline-block font-semibold px-10 py-2">
+              QUOTATION
             </div>
             <div>Email: tahirmirza8492@gmail.com</div>
             <div>TRN: 100477222200003</div>
@@ -125,27 +120,31 @@ const QuotationPrint = () => {
           </div>
         </div>
 
+        {/* Quotation Details */}
         <div className="flex justify-between items-center text-sm mb-4">
           <div>
             <div>
-              Quotation No: <strong>{quotationNo}</strong>
+              Quotation No: <strong>{quotationData?.quotation_no}</strong>
             </div>
             <div>
-              Project: <strong>{projectName}</strong>
+              Project: <strong>{quotationData?.project_name}</strong>
             </div>
             <div>
-              Mr./M/s: <strong className="underline">{customerName}</strong>
+              Mr./M/s:{" "}
+              <strong className="underline">
+                {quotationData?.customer?.name}
+              </strong>
             </div>
           </div>
-
           <div>
             <div>
-              Date: التاريخ :<strong>{date}</strong>
+              Date: التاريخ :<strong>{new Date().toLocaleDateString()}</strong>
             </div>
             <div>السيـد / السـادة</div>
           </div>
         </div>
 
+        {/* Table of Items */}
         <table className="w-full border text-xs mb-6">
           <thead className="bg-gray-100">
             <tr>
@@ -154,46 +153,43 @@ const QuotationPrint = () => {
               <th className="border px-1 py-1">SIZE</th>
               <th className="border px-1 py-1">QTY</th>
               <th className="border px-1 py-1">UNIT PRICE</th>
-              <th className="border px-1 py-1">Net Amt</th>
               <th className="border px-1 py-1">TOTAL</th>
             </tr>
           </thead>
           <tbody>
-            {items.map((item, index) => {
-              const calc = getItemCalculations(item);
+            {quotationItems.map((item, index) => {
               return (
                 <tr key={index} className="border h-12">
                   <td className="border px-2 text-center">{index + 1}</td>
                   <td className="border px-2">{item.description}</td>
                   <td className="border px-2 text-center">{item.size}</td>
                   <td className="border px-2 text-center">
-                    {item.quantity.toFixed(2)}
+                    {Number(item.quantity.toFixed(2))}
                   </td>
-                  <td className="border px-2 text-center">
-                    {item.unitPrice.toFixed(2)}
-                  </td>
-                  <td className="border px-2 text-center">
-                    {calc.netAmount.toFixed(2)}
-                  </td>
+                  <td className="border px-2 text-center">{item.unit_price}</td>
+
                   <td className="border px-2 text-center font-bold">
-                    {calc.total.toFixed(2)}
+                    {`${item.quantity} X ${item.unit_price} = ${item.total_price}`}
                   </td>
                 </tr>
               );
             })}
             <tr className="h-12 border-t">
               <td colSpan={7} className="px-2 text-sm italic">
-                {note}
+                This Quotation is valid for 15 days from today to{" "}
+                {quotationData?.valid_until}
               </td>
             </tr>
             <tr className="h-12 border-t">
               <td colSpan={7} className="px-2 text-sm italic">
-                Amount in words: <strong>{toWords(totals?.net)}</strong>
+                Amount in words:{" "}
+                <strong>{toWords(Number(totals.net.toFixed(2)))}</strong>
               </td>
             </tr>
           </tbody>
         </table>
 
+        {/* Totals & Footer */}
         <div className="flex justify-between">
           <div className="text-xs">
             <div>Receiver's Sign توقيع المستلم</div>
@@ -203,18 +199,13 @@ const QuotationPrint = () => {
           <div className="text-sm w-64 border rounded-md p-3 bg-gray-50">
             <div className="flex justify-between">
               <span>Total Quantities</span>
-              <span>
-                {items.reduce((acc, curr) => acc + curr.quantity, 0)} Items
-              </span>
+              <span>{totals.quantity} Items</span>
             </div>
-            <div className="flex justify-between">
-              <span>Total Discount:</span>
-              <span>{totals?.discount?.toFixed(2)} AED</span>
-            </div>
+
             <hr className="my-2" />
             <div className="flex justify-between font-bold text-base text-blue-900">
               <span>Net Payable:</span>
-              <span>{totals?.net?.toFixed(2)} AED</span>
+              <span>{Number(totals.net.toFixed(2))} AED</span>
             </div>
           </div>
         </div>

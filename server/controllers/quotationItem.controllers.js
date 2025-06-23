@@ -196,3 +196,37 @@ export const deleteQuotationItem = async (req, res) => {
     });
   }
 };
+
+export const getAllQuotationsWithQuotNo = async (req, res) => {
+  try {
+    const db = req.app.locals.db;
+    const { qtno } = req.params;
+    console.log("Quotation No: ", qtno);
+    if (!qtno) {
+      return res.status(404).json({
+        success: false,
+        error: true,
+        message: "Please provide quotation no",
+      });
+    }
+
+    const quotations = await db.all(
+      `SELECT * FROM quotation_items WHERE quotation_id = ?`,
+      [qtno]
+    );
+
+    return res.status(200).json({
+      success: true,
+      error: false,
+      message: "Fetched all the quotations.",
+      data: quotations,
+    });
+  } catch (error) {
+    console.log("Error while getting quotations: ", error || error.message);
+    return res.status(500).json({
+      success: false,
+      error: true,
+      message: "Internal server error",
+    });
+  }
+};

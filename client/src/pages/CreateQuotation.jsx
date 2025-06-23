@@ -1,243 +1,237 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-const generateQuotationNo = () =>
-  `QT${Math.floor(1000 + Math.random() * 9000)}`;
+import Axios from "../utils/Axios";
+import SummaryApi from "../common/SummaryApi";
+import toast from "react-hot-toast";
+import { FaPlus, FaTrash, FaSave, FaCheck } from "react-icons/fa";
 
 const CreateQuotation = () => {
-  const [quotationNo] = useState(generateQuotationNo());
-  const [customerName, setCustomerName] = useState("");
-  const [projectName, setProjectName] = useState("");
-  const [note, setNote] = useState("");
-  const [items, setItems] = useState([
-    { description: "", size: "", quantity: 1, unitPrice: 0, discount: 0 },
-  ]);
-
   const navigate = useNavigate();
+
+  const [formData, setFormData] = useState({
+    customer: {
+      name: "",
+      email: "",
+      phone: "",
+      address: "",
+    },
+    quotation: {
+      project_name: "",
+    },
+    items: [{ description: "", size: "", quantity: 1, unit_price: 0 }],
+  });
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    const [section, key] = name.split(".");
+    setFormData((prev) => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [key]: value,
+      },
+    }));
+  };
+
   const handleItemChange = (index, field, value) => {
-    const updatedItems = [...items];
-    updatedItems[index][field] = ["quantity", "unitPrice", "discount"].includes(
-      field
-    )
+    const updated = [...formData.items];
+    updated[index][field] = ["quantity", "unit_price"].includes(field)
       ? Number(value)
       : value;
-    setItems(updatedItems);
+    setFormData((prev) => ({ ...prev, items: updated }));
   };
 
   const addItem = () => {
-    setItems([
-      ...items,
-      { description: "", size: "", quantity: 1, unitPrice: 0, discount: 0 },
-    ]);
+    setFormData((prev) => ({
+      ...prev,
+      items: [
+        ...prev.items,
+        { description: "", size: "", quantity: 1, unit_price: 0 },
+      ],
+    }));
   };
 
   const removeItem = (index) => {
-    setItems(items.filter((_, i) => i !== index));
+    const updated = [...formData.items];
+    updated.splice(index, 1);
+    setFormData((prev) => ({ ...prev, items: updated }));
   };
 
-  const getItemCalculations = (item) => {
-    const baseAmount = item.unitPrice * item.quantity;
-    const discountPerUnit = (item.unitPrice * item.discount) / 100;
-    const netUnitPrice = item.unitPrice - discountPerUnit;
-    const discountAmount = discountPerUnit * item.quantity;
-    const netAmount = netUnitPrice * item.quantity;
+  // const handleSaveDraft = async () => {
+  //   try {
+  //     const res = await Axios({
+  //       ...SummaryApi.createQuotation,
+  //       data: { ...formData, status: "draft" },
+  //     });
+  //     if (res.data.success) toast.success("Draft saved successfully!");
+  //   } catch (err) {
+  //     toast.error("Failed to save draft");
+  //   }
+  // };
 
-    return { baseAmount, discountAmount, netAmount };
+  const handleSubmit = async () => {
+    try {
+      const res = await Axios({
+        ...SummaryApi.createQuotation,
+        data: formData,
+      });
+      if (res.data.success) {
+        toast.success(res.data.message);
+        navigate("/dashboard/quotations");
+        // navigate(`/dashboard/quotation-print/${res.data.data.quotationNo}`, {
+        //   state: {
+        //     ...formData,
+        //     quotationNo: res.data.data.quotationNo,
+        //     date: new Date().toLocaleDateString(),
+        //   },
+        // });
+      }
+    } catch (err) {
+      toast.error("Failed to create quotation");
+    }
   };
 
-  const totals = items.reduce(
-    (acc, item) => {
-      const calc = getItemCalculations(item);
-      acc.base += calc.baseAmount;
-      acc.discount += calc.discountAmount;
-      acc.net += calc.netAmount;
-      return acc;
-    },
-    { base: 0, discount: 0, net: 0 }
+  const totalQuantity = formData.items.reduce(
+    (acc, item) => acc + Number(item.quantity),
+    0
+  );
+  const totalAmount = formData.items.reduce(
+    (acc, item) => acc + item.quantity * item.unit_price,
+    0
   );
 
   return (
-    <div className="max-w-5xl mx-auto p-8 bg-white shadow-lg rounded-lg border border-gray-200">
-      <h1 className="text-3xl font-semibold text-gray-800 mb-4">QUOTATION</h1>
+    <div className="max-w-5xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold text-center mb-8 text-blue-800">
+        🧾 Create Quotation
+      </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div>
-          <strong>Quotation No:</strong> {quotationNo}
-        </div>
-        <div>
-          <strong>Date:</strong> {new Date().toLocaleDateString()}
+      {/* Customer Info */}
+      <div className="bg-white shadow rounded-lg p-6 mb-6 border">
+        <h2 className="text-xl font-semibold mb-4 text-gray-700">
+          Customer Info
+        </h2>
+        <div className="grid md:grid-cols-2 gap-4">
+          {["name", "email", "phone", "address"].map((field) => (
+            <div key={field}>
+              <label className="block text-sm text-gray-600 capitalize mb-1">
+                {field}
+              </label>
+              <input
+                type="text"
+                name={`customer.${field}`}
+                value={formData.customer[field]}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                placeholder={`Enter ${field}`}
+              />
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Customer Name
-          </label>
-          <input
-            type="text"
-            className="w-full px-4 py-2 border rounded-md"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Project Name
-          </label>
-          <input
-            type="text"
-            className="w-full px-4 py-2 border rounded-md"
-            value={projectName}
-            onChange={(e) => setProjectName(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* Write a Note Section */}
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Write a Note
-        </label>
-        <textarea
-          placeholder="Any additional notes..."
-          className="w-full px-4 py-2 border rounded-md"
-          rows="3"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
+      {/* Project Info */}
+      <div className="bg-white shadow rounded-lg p-6 mb-6 border">
+        <h2 className="text-xl font-semibold mb-4 text-gray-700">
+          Project Info
+        </h2>
+        <input
+          type="text"
+          name="quotation.project_name"
+          value={formData.quotation.project_name}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter project name"
         />
       </div>
 
-      <div className="space-y-6">
-        {items.map((item, index) => {
-          const calc = getItemCalculations(item);
-          return (
-            <div key={index} className="border p-4 rounded-md bg-gray-50">
-              <div className="grid grid-cols-1 md:grid-cols-6 gap-2 items-start">
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    placeholder="Enter item description"
-                    className="w-full px-4 py-2 border rounded-md"
-                    value={item.description}
-                    onChange={(e) =>
-                      handleItemChange(index, "description", e.target.value)
-                    }
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Size
-                  </label>
-                  <input
-                    className="w-full px-4 py-2 border rounded-md"
-                    value={item.size}
-                    onChange={(e) =>
-                      handleItemChange(index, "size", e.target.value)
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Quantity
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    className="w-full px-4 py-2 border rounded-md"
-                    value={item.quantity}
-                    onChange={(e) =>
-                      handleItemChange(index, "quantity", e.target.value)
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Unit Price
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="w-full px-4 py-2 border rounded-md"
-                    value={item.unitPrice}
-                    onChange={(e) =>
-                      handleItemChange(index, "unitPrice", e.target.value)
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Discount (%)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    className="w-full px-4 py-2 border rounded-md"
-                    value={item.discount}
-                    onChange={(e) =>
-                      handleItemChange(index, "discount", e.target.value)
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Net Amount (AED)
-                  </label>
-                  <div className="px-4 py-2 border rounded-md bg-gray-100 text-sm">
-                    <strong>{calc.netAmount.toFixed(2)} AED</strong>
-                  </div>
-                </div>
-              </div>
+      {/* Items */}
+      <div className="bg-white shadow rounded-lg p-6 mb-6 border">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-700">
+            Quotation Items
+          </h2>
+          <button
+            onClick={addItem}
+            className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded hover:bg-blue-700 flex items-center"
+          >
+            <FaPlus className="mr-2" /> Add Item
+          </button>
+        </div>
 
-              {items.length > 1 && (
-                <button
-                  onClick={() => removeItem(index)}
-                  className="text-red-600 text-sm mt-2"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-          );
-        })}
+        {formData.items.map((item, index) => (
+          <div
+            key={index}
+            className="grid md:grid-cols-4 gap-4 items-center mb-4 relative border p-4 rounded-md bg-gray-50"
+          >
+            <textarea
+              className="col-span-2 px-3 py-2 border rounded-md resize-none"
+              placeholder="Description"
+              value={item.description}
+              onChange={(e) =>
+                handleItemChange(index, "description", e.target.value)
+              }
+            />
+            <input
+              type="text"
+              className="px-3 py-2 border rounded-md"
+              placeholder="Size"
+              value={item.size}
+              onChange={(e) => handleItemChange(index, "size", e.target.value)}
+            />
+            <input
+              type="number"
+              className="px-3 py-2 border rounded-md"
+              placeholder="Qty"
+              value={item.quantity}
+              onChange={(e) =>
+                handleItemChange(index, "quantity", e.target.value)
+              }
+            />
+            <input
+              type="number"
+              className="px-3 py-2 border rounded-md"
+              placeholder="Unit Price"
+              value={item.unit_price}
+              onChange={(e) =>
+                handleItemChange(index, "unit_price", e.target.value)
+              }
+            />
+            {formData.items.length > 1 && (
+              <button
+                onClick={() => removeItem(index)}
+                className="absolute top-2 right-2 text-red-600 hover:text-red-800"
+                title="Remove item"
+              >
+                <FaTrash />
+              </button>
+            )}
+          </div>
+        ))}
       </div>
-
-      <button
-        onClick={addItem}
-        className="mt-6 mb-4 px-6 py-2 bg-blue-600 text-white rounded-md"
-      >
-        Add More
-      </button>
-
-      <div className="mt-6 text-right space-y-1">
-        <div>Total Amount: {totals.base.toFixed(2)} AED</div>
-        <div>Discount: {totals.discount.toFixed(2)} AED</div>
-        <div className="font-bold text-lg">
-          Net Quotation Value: {totals.net.toFixed(2)} AED
+      {/* Totals Section */}
+      <div className="bg-white shadow rounded-lg p-6 mb-6 border max-w-md ml-auto">
+        <h3 className="text-lg font-semibold text-gray-700 mb-4">Summary</h3>
+        <div className="flex justify-between mb-2">
+          <span className="text-sm text-gray-600">Total Quantity:</span>
+          <span className="font-semibold">{totalQuantity}</span>
+        </div>
+        <div className="flex justify-between mb-2">
+          <span className="text-sm text-gray-600">Total Amount:</span>
+          <span className="font-semibold">{totalAmount.toFixed(2)} AED</span>
         </div>
       </div>
 
-      <button
-        onClick={() =>
-          navigate(`/dashboard/quotation-print/${quotationNo}`, {
-            state: {
-              quotationNo,
-              customerName,
-              projectName,
-              items,
-              totals,
-              date: new Date().toLocaleDateString(),
-              note, // ✅ send note
-            },
-          })
-        }
-        className="mt-6 px-6 py-2 bg-green-600 text-white rounded-md"
-      >
-        Generate Quotation
-      </button>
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-4">
+        <button
+          onClick={handleSubmit}
+          className="flex items-center bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-md shadow"
+        >
+          <FaCheck className="mr-2" />
+          Submit Quotation
+        </button>
+      </div>
     </div>
   );
 };

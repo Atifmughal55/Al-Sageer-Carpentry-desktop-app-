@@ -4,6 +4,7 @@ import { initDB } from "./db/database.js";
 import customerRoutes from "./routes/customer.routes.js";
 import invoiceItemRoutes from "./routes/invoiceItems.routes.js";
 import quotationItem from "./routes/quotationItems.routes.js";
+import quotations from "./routes/quotation.routes.js";
 import { createTables } from "./db/createTables.js";
 
 const app = express();
@@ -23,6 +24,7 @@ const PORT = 8000;
 app.use("/api/customers", customerRoutes); // Mount customer routes
 app.use("/api/invoice-items", invoiceItemRoutes);
 app.use("/api/quotaton-item", quotationItem);
+app.use("/api/quotations", quotations);
 
 app.listen(PORT, () => {
   console.log("Server is running on port 8000");

@@ -1,51 +1,116 @@
 import React from "react";
+import { useState } from "react";
+import toast from "react-hot-toast";
 import { MdEdit, MdDelete, MdAdd } from "react-icons/md";
-import { Link } from "react-router-dom";
-
-const dummyQuotations = [
-  {
-    id: 1,
-    customerName: "John Doe",
-    contact: "+93013453",
-    startDate: "2025-06-10",
-    totalCharges: 5000,
-    advancePayment: 2000,
-    status: "Pending",
-  },
-  {
-    id: 2,
-    customerName: "Jane Smith",
-    contact: "+9301423453",
-    startDate: "2025-06-08",
-    totalCharges: 3000,
-    advancePayment: 3000,
-    status: "Complete",
-  },
-  {
-    id: 3,
-    customerName: "Ali Khan",
-    contact: "+9301455013",
-    startDate: "2025-06-07",
-    totalCharges: 4000,
-    advancePayment: 1000,
-    status: "Canceled",
-  },
-];
-
-const getStatusColor = (status) => {
-  switch (status) {
-    case "Pending":
-      return "text-yellow-700 bg-yellow-100";
-    case "Complete":
-      return "text-green-700 bg-green-100";
-    case "Canceled":
-      return "text-red-700 bg-red-100";
-    default:
-      return "";
-  }
-};
+import { BsPrinterFill } from "react-icons/bs";
+import { Link, useNavigate } from "react-router-dom";
+import SummaryApi from "../common/SummaryApi";
+import Axios from "../utils/Axios";
+import { useEffect } from "react";
+import QuotationEditModel from "../components/QuotationEditModel";
+import { useDispatch } from "react-redux";
+import { setQuotation, setQuotationItems } from "../reducer/quotationSlice";
 
 const Quotations = () => {
+  const [allQuotations, setAllQuotation] = useState([]);
+  const [selectedQuotation, setSelectedQuotation] = useState({});
+  const [openEditQuotation, setOpenEditQuotation] = useState(false);
+
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const fetchQuotations = async () => {
+    try {
+      const response = await Axios({
+        ...SummaryApi.getAllQuotations,
+      });
+      const { data: responseData } = response;
+
+      if (responseData.success) {
+        toast.success(responseData.message);
+        setAllQuotation(responseData.data);
+      }
+    } catch (error) {
+      toast.error("Something went wrong");
+    }
+  };
+
+  const deleteQuotation = async (id) => {
+    try {
+      const respose = await Axios({
+        ...SummaryApi.deleteQuotation,
+        url: `${SummaryApi.deleteQuotation.url}/${id}`,
+      });
+
+      const { data: responseData } = respose;
+      if (responseData.success) {
+        toast.success(responseData.message);
+        fetchQuotations();
+      }
+    } catch (error) {
+      toast.error("Something went wrong");
+    }
+  };
+
+  const handleChange = async (e, quotationId) => {
+    const newStatus = e.target.value;
+
+    try {
+      const response = await Axios({
+        ...SummaryApi.updateStatus,
+        url: `${SummaryApi.updateStatus.url}/${quotationId}/status`,
+        data: { status: newStatus },
+      });
+
+      if (response.data.success) {
+        toast.success("Status updated successfully");
+
+        // Update the status of the quotation in the local state
+        setAllQuotation((prev) =>
+          prev.map((q) =>
+            q.id === quotationId ? { ...q, status: newStatus } : q
+          )
+        );
+      } else {
+        toast.error("Failed to update status");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Something went wrong");
+    }
+  };
+
+  const handleClick = async (q) => {
+    try {
+      const response = await Axios({
+        ...SummaryApi.getItemsOfQuotaion,
+        url: `${SummaryApi.getItemsOfQuotaion.url}/${q.id}`,
+      });
+
+      const { data: responseData } = response;
+      if (responseData.success) {
+        toast.success(responseData.message);
+        dispatch(setQuotationItems(responseData.data));
+        dispatch(setQuotation(q));
+        navigate(`/dashboard/quotation-print/${q.quotation_no}`);
+      } else {
+        toast.error(responseData.message);
+      }
+    } catch (error) {
+      toast.error("Something went wrong");
+    }
+
+    // dispatch(
+    //   setQuotation({
+    //     customer: q.customer,
+    //     quotation_info: q, // or specific fields from q
+    //     quotation_items: q.quotation_items || [],
+    //   })
+    // );
+  };
+
+  useEffect(() => {
+    fetchQuotations();
+  }, []);
   return (
     <div className="p-6">
       {/* Header Section */}
@@ -53,13 +118,6 @@ const Quotations = () => {
         <h2 className="text-3xl font-bold text-yellow-800">Quotations</h2>
 
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-          {/* Sort Dropdown */}
-          <select className="px-4 py-2 rounded-md border border-yellow-300 bg-white text-yellow-800 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 shadow-sm">
-            <option value="">Sort By</option>
-            <option value="status">Status</option>
-            <option value="pending">Pending Dues</option>
-          </select>
-
           {/* Search Input */}
           <input
             type="text"
@@ -85,52 +143,72 @@ const Quotations = () => {
             <tr>
               <th className="py-3 px-4 text-left">#</th>
               <th className="py-3 px-4 text-left">Customer Name</th>
-              <th className="py-3 px-4 text-left">Contact</th>
-              <th className="py-3 px-4 text-left">Start Date</th>
-              <th className="py-3 px-4 text-left">Total Charges</th>
-              <th className="py-3 px-4 text-left">Advance</th>
-              <th className="py-3 px-4 text-left">Pending</th>
+              <th className="py-3 px-4 text-left">Customer Contact</th>
+              <th className="py-3 px-4 text-left">Project Name</th>
+              <th className="py-3 px-4 text-left">Quotation No</th>
               <th className="py-3 px-4 text-left">Status</th>
+              <th className="py-3 px-4 text-left">Validity</th>
               <th className="py-3 px-4 text-left">Actions</th>
             </tr>
           </thead>
           <tbody className="text-sm text-gray-700">
-            {dummyQuotations.map((q, index) => {
-              const pending = q.totalCharges - q.advancePayment;
+            {allQuotations.map((q, index) => {
               return (
                 <tr
                   key={q.id}
-                  className="border-t border-yellow-100 hover:bg-yellow-50 transition"
+                  className={`${
+                    index % 2 === 0 ? "bg-white" : "bg-yellow-50"
+                  } border-b border-yellow-200 transition duration-200 hover:bg-yellow-100`}
                 >
                   <td className="py-3 px-4">{index + 1}</td>
-                  <td className="py-3 px-4">{q.customerName}</td>
-                  <td className="py-3 px-4">{q.contact}</td>
-                  <td className="py-3 px-4">{q.startDate}</td>
-                  <td className="py-3 px-4">Rs {q.totalCharges}</td>
-                  <td className="py-3 px-4">Rs {q.advancePayment}</td>
-                  <td className="py-3 px-4">Rs {pending}</td>
+                  <td className="py-3 px-4">{q.customer?.name}</td>
+                  <td className="py-3 px-4">{q.customer?.phone}</td>
+                  <td className="py-3 px-4">{q.project_name}</td>
+                  <td className="py-3 px-4">{q.quotation_no}</td>
                   <td className="py-3 px-4">
-                    <span
-                      className={`px-3 py-1 text-xs font-medium rounded-full ${getStatusColor(
-                        q.status
-                      )}`}
+                    <select
+                      className="border p-2 rounded-md"
+                      value={q.status} // Use q.status instead of global state
+                      onChange={(e) => handleChange(e, q.id)}
                     >
-                      {q.status}
-                    </span>
+                      <option value="pending">Pending</option>
+                      <option value="approved">Approved</option>
+                      <option value="sent">Sent</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </td>
+                  <td className="py-3 px-4">
+                    {new Date(q.valid_until) < new Date()
+                      ? "Expired"
+                      : new Date(q.valid_until).toLocaleDateString()}
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex gap-2">
                       <button
                         title="Edit"
+                        disabled={
+                          q.status === "approved" || q.status === "rejected"
+                        }
+                        onClick={() => {
+                          setOpenEditQuotation(true);
+                          setSelectedQuotation(q);
+                        }}
                         className="p-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white transition"
                       >
                         <MdEdit />
                       </button>
                       <button
                         title="Delete"
+                        onClick={() => deleteQuotation(q.id)}
                         className="p-2 rounded-md bg-red-500 hover:bg-red-600 text-white transition"
                       >
                         <MdDelete />
+                      </button>
+                      <button
+                        className="p-2 rounded-md bg-green-500 hover:bg-green-600 text-white transition"
+                        onClick={() => handleClick(q)}
+                      >
+                        <BsPrinterFill />
                       </button>
                     </div>
                   </td>
@@ -140,6 +218,13 @@ const Quotations = () => {
           </tbody>
         </table>
       </div>
+      {openEditQuotation && (
+        <QuotationEditModel
+          quotation={selectedQuotation}
+          close={() => setOpenEditQuotation(false)}
+          cancel={() => setOpenEditQuotation(false)}
+        />
+      )}
     </div>
   );
 };

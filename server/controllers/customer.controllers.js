@@ -2,6 +2,7 @@ import {
   createCustomerModel,
   deleteCustomerModel,
   getAllCustomersModel,
+  getCustomerByFieldsModel,
   getCustomerByIdModel,
   updateCustomerModel,
 } from "../models/customer.model.js";
@@ -171,6 +172,40 @@ export const deleteCustomer = async (req, res) => {
       success: false,
       error: true,
       message: "Something went wrong while deteling customer",
+    });
+  }
+};
+
+export const searchCustomer = async (req, res) => {
+  try {
+    const db = req.app.locals.db;
+    const { email, phone } = req.query;
+
+    // Ensure at least one value is provided
+    const data = { email, phone };
+    if (!email && !phone) {
+      return res.status(400).json({
+        success: false,
+        error: true,
+        message: "Please provide either email or phone number to search.",
+      });
+    }
+
+    console.log("data", data);
+    const customer = await getCustomerByFieldsModel(db, data);
+
+    return res.status(200).json({
+      success: true,
+      error: false,
+      message: "Fetched results",
+      data: customer,
+    });
+  } catch (error) {
+    console.error("Error while searching customer:", error.message || error);
+    return res.status(500).json({
+      success: false,
+      error: true,
+      message: "Internal server error",
     });
   }
 };
