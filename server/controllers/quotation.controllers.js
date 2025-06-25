@@ -66,8 +66,11 @@ export const getAllQuotations = async (req, res) => {
   try {
     const db = req.app.locals.db;
 
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
     // Get all quotations
-    const quotations = await allQuotations(db);
+    const quotations = await allQuotations(db, limit, offset);
 
     // For each quotation, fetch its customer using customer_id
     const quotationsWithCustomer = await Promise.all(
@@ -83,6 +86,9 @@ export const getAllQuotations = async (req, res) => {
     return res.status(200).json({
       success: true,
       error: false,
+      page: page,
+      offset: offset,
+      limit: limit,
       message: "Fetched all the quotations.",
       total_quotations: quotationsWithCustomer.length,
       data: quotationsWithCustomer,

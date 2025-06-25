@@ -201,11 +201,11 @@ export const searchCustomer = async (req, res) => {
       data: customer,
     });
   } catch (error) {
-    console.error("Error while searching customer:", error.message || error);
+    console.log("Error while getting customer: ", error || error.message);
     return res.status(500).json({
       success: false,
       error: true,
-      message: "Internal server error",
+      message: "Internal Server Error",
     });
   }
 };

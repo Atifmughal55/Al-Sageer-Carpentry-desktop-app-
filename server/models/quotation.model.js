@@ -26,8 +26,8 @@ export const singleQuotationModel = async (db, id) => {
 };
 
 //Get all quotations
-export const allQuotations = (db) => {
-  return db.all(`SELECT * FROM quotations`);
+export const allQuotations = (db, limit, offset) => {
+  return db.all(`SELECT * FROM quotations LIMIT ? OFFSET ?`, [limit, offset]);
 };
 
 //Get Quotations against a customers
