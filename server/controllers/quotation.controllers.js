@@ -105,26 +105,40 @@ export const getQuotationByNo = async (req, res) => {
   try {
     const db = req.app.locals.db;
     const { quotation_no } = req.params;
+    console.log("Quotation number received:", quotation_no);
+    if (!quotation_no) {
+      return res.status(400).json({
+        success: false,
+        message: "Quotation number is required.",
+      });
+    }
 
     const quotation = await getQuotationByNumber(db, quotation_no);
 
-    if (quotation) {
-      const customer = await getCustomerByIdModel(quotation.customer_id, db);
-      const payload = {
-        quotation: quotation,
-        customer: customer,
-      };
-      return res.status(200).json({
-        success: true,
-        data: payload,
-        message: "Quotation fetched successfully.",
-      });
-    } else {
+    if (!quotation) {
       return res.status(404).json({
         success: false,
         message: "Quotation not found.",
       });
     }
+
+    const customer = await getCustomerByIdModel(quotation.customer_id, db);
+
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: "Customer associated with this quotation not found.",
+      });
+    }
+    const payload = {
+      ...quotation,
+      customer,
+    };
+    return res.status(200).json({
+      success: true,
+      data: payload,
+      message: "Quotation fetched successfully.",
+    });
   } catch (error) {
     console.error("Error fetching quotation:", error);
     return res.status(500).json({

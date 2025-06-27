@@ -41,6 +41,10 @@ const SummaryApi = {
     url: "/api/quotations",
     method: "put",
   },
+  searchQuotation: {
+    url: "/api/quotations/search/quotation",
+    method: "get",
+  },
 };
 
 export default SummaryApi;

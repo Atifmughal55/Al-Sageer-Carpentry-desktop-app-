@@ -11,6 +11,7 @@ import QuotationEditModel from "../components/QuotationEditModel";
 import { useDispatch } from "react-redux";
 import { setQuotation, setQuotationItems } from "../reducer/quotationSlice";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
+import { useRef } from "react";
 
 const Quotations = () => {
   const [allQuotations, setAllQuotation] = useState([]);
@@ -20,9 +21,13 @@ const Quotations = () => {
   const [limit] = useState(5); // You can make this dynamic too
   const [totalPages, setTotalPages] = useState(1);
   const [totalQuotations, setTotalQuotations] = useState(0);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
+  const searchTimeout = useRef(null);
   const fetchQuotations = async () => {
+    setLoading(true);
     try {
       const response = await Axios({
         ...SummaryApi.getAllQuotations,
@@ -39,17 +44,19 @@ const Quotations = () => {
       }
     } catch (error) {
       toast.error("Something went wrong");
+    } finally {
+      setLoading(false);
     }
   };
 
   const deleteQuotation = async (id) => {
     try {
-      const respose = await Axios({
+      const response = await Axios({
         ...SummaryApi.deleteQuotation,
         url: `${SummaryApi.deleteQuotation.url}/${id}`,
       });
 
-      const { data: responseData } = respose;
+      const { data: responseData } = response;
       if (responseData.success) {
         toast.success(responseData.message);
         fetchQuotations();
@@ -116,6 +123,28 @@ const Quotations = () => {
     // );
   };
 
+  const handleSearch = async (quotationNo) => {
+    console.log("Searching for quotation with number:", quotationNo);
+    try {
+      const response = await Axios({
+        ...SummaryApi.searchQuotation,
+        url: `${SummaryApi.searchQuotation.url}/${quotationNo}`,
+      });
+
+      const { data: responseData } = response;
+
+      if (responseData.success) {
+        toast.success(responseData.message);
+        setAllQuotation([responseData.data]); // Assuming data is a single quotation object
+        setTotalPages(1); // Reset to 1 since we are showing only one result
+        setTotalQuotations(1); // Set total quotations to 1
+      } else {
+        toast.error(responseData.message);
+      }
+    } catch (error) {
+      toast.error("Something went wrong while searching");
+    }
+  };
   useEffect(() => {
     fetchQuotations();
   }, [page]);
@@ -129,6 +158,21 @@ const Quotations = () => {
           {/* Search Input */}
           <input
             type="text"
+            onChange={(e) => {
+              const value = e.target.value;
+              if (searchTimeout.current) {
+                clearTimeout(searchTimeout.current);
+              }
+
+              searchTimeout.current = setTimeout(() => {
+                const trimmedValue = value.trim();
+                if (trimmedValue === "") {
+                  fetchQuotations();
+                } else {
+                  handleSearch(trimmedValue);
+                }
+              }, 1000);
+            }}
             placeholder="Search here..."
             className="px-4 py-2 rounded-md border border-yellow-300 bg-white text-yellow-900 placeholder-yellow-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500"
           />
@@ -160,7 +204,15 @@ const Quotations = () => {
             </tr>
           </thead>
           <tbody className="text-sm text-gray-700">
-            {allQuotations.length > 0 ? (
+            {loading ? (
+              [...Array(5)].map((_, idx) => (
+                <tr key={idx} className="animate-pulse bg-yellow-50">
+                  <td colSpan={8} className="py-3 px-4">
+                    <div className="h-4 bg-yellow-200 rounded w-3/4 mb-2"></div>
+                  </td>
+                </tr>
+              ))
+            ) : allQuotations.length > 0 ? (
               allQuotations.map((q, index) => {
                 return (
                   <tr

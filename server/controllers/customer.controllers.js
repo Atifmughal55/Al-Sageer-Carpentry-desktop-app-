@@ -192,7 +192,7 @@ export const searchCustomer = async (req, res) => {
     }
     const data = { email, phone };
     const customer = await getCustomerByFieldsModel(db, data);
-    if (customer.length === 0) {
+    if (!customer) {
       return res.status(404).json({
         success: false,
         error: true,

@@ -4,6 +4,7 @@ import {
   deleteQuotatoin,
   getAllQuotations,
   getQuotation,
+  getQuotationByNo,
   getQuotationsWithCustomer,
   updateQuotation,
   updateStatus,
@@ -18,4 +19,5 @@ router.post("/", createQuotation);
 router.delete("/:id", deleteQuotatoin);
 router.put("/update/:id", updateQuotation);
 router.put("/:id/status", updateStatus);
+router.get("/search/quotation/:quotation_no", getQuotationByNo);
 export default router;
