@@ -14,5 +14,5 @@ router.get("/:id", getCustomerById);
 router.post("/", addNewCustomer);
 router.put("/:id", updateCustomer);
 router.delete("/:id", deleteCustomer);
-router.get("/search-customer", searchCustomer);
+router.get("/customer/search-customer", searchCustomer);
 export default router;

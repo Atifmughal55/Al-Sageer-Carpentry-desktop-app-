@@ -201,7 +201,6 @@ export const getAllQuotationsWithQuotNo = async (req, res) => {
   try {
     const db = req.app.locals.db;
     const { qtno } = req.params;
-    console.log("Quotation No: ", qtno);
     if (!qtno) {
       return res.status(404).json({
         success: false,
@@ -214,7 +213,7 @@ export const getAllQuotationsWithQuotNo = async (req, res) => {
       `SELECT * FROM quotation_items WHERE quotation_id = ?`,
       [qtno]
     );
-    console.log("quotation_Items :", quotation_Items);
+
     return res.status(200).json({
       success: true,
       error: false,

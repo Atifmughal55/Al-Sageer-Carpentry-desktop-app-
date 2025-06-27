@@ -182,7 +182,7 @@ export const searchCustomer = async (req, res) => {
     const { email, phone } = req.query;
 
     // Ensure at least one value is provided
-    const data = { email, phone };
+
     if (!email && !phone) {
       return res.status(400).json({
         success: false,
@@ -190,10 +190,16 @@ export const searchCustomer = async (req, res) => {
         message: "Please provide either email or phone number to search.",
       });
     }
-
-    console.log("data", data);
+    const data = { email, phone };
     const customer = await getCustomerByFieldsModel(db, data);
-
+    if (customer.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: true,
+        message: "No customer found with the provided email or phone number.",
+      });
+    }
+    // If customer is found, return the customer data
     return res.status(200).json({
       success: true,
       error: false,

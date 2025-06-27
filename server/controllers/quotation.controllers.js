@@ -1,3 +1,4 @@
+import { getQuotationByNumber } from "../models/quotation.model.js"; // adjust the path
 import {
   createCustomerModel,
   getCustomerByFieldsModel,
@@ -11,13 +12,8 @@ import {
   singleQuotationModel,
   updateQuotationModel,
 } from "../models/quotation.model.js";
-import {
-  createQuotationItemModel,
-  delteQuotationItemModel,
-  getSingleQuotationModel,
-} from "../models/quotationItem.model.js";
+import { createQuotationItemModel } from "../models/quotationItem.model.js";
 import { generateQuotationNo } from "../utils/generateId.js";
-import { deleteQuotationItem } from "./quotationItem.controllers.js";
 
 export const getQuotation = async (req, res) => {
   try {
@@ -101,6 +97,39 @@ export const getAllQuotations = async (req, res) => {
       success: false,
       error: true,
       message: "Internal server error",
+    });
+  }
+};
+
+export const getQuotationByNo = async (req, res) => {
+  try {
+    const db = req.app.locals.db;
+    const { quotation_no } = req.params;
+
+    const quotation = await getQuotationByNumber(db, quotation_no);
+
+    if (quotation) {
+      const customer = await getCustomerByIdModel(quotation.customer_id, db);
+      const payload = {
+        quotation: quotation,
+        customer: customer,
+      };
+      return res.status(200).json({
+        success: true,
+        data: payload,
+        message: "Quotation fetched successfully.",
+      });
+    } else {
+      return res.status(404).json({
+        success: false,
+        message: "Quotation not found.",
+      });
+    }
+  } catch (error) {
+    console.error("Error fetching quotation:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error.",
     });
   }
 };
@@ -231,8 +260,12 @@ export const deleteQuotatoin = async (req, res) => {
       });
     }
 
-    const checkQuotation = await getSingleQuotationModel(db, id);
-    if (!checkQuotation) {
+    const { quotation, customer, quotation_items } = await singleQuotationModel(
+      db,
+      id
+    );
+
+    if (!quotation) {
       return res.status(404).json({
         success: false,
         error: true,
@@ -240,21 +273,24 @@ export const deleteQuotatoin = async (req, res) => {
       });
     }
 
-    const quotationItemsWithQuotation = await db.all(
-      `SELECT * FROM quotation_items WHERE quotation_id = ?`,
-      [checkQuotation.id]
+    await Promise.all(
+      quotation_items.map((item) => {
+        return db.run(`DELETE FROM quotation_items WHERE id = ?`, [item.id]);
+      })
     );
-
-    if (quotationItemsWithQuotation && quotationItemsWithQuotation.length > 0) {
-      await Promise.all(
-        quotationItemsWithQuotation.map((q) =>
-          delteQuotationItemModel(db, q.id)
-        )
-      );
-    }
-
+    // Delete the quotation
     await deleteQuotationModel(db, id);
 
+    // Optionally, you can also delete the customer if no other quotations exist for that customer
+    const customerExists = await db.get(
+      `SELECT COUNT(*) as count FROM quotations WHERE customer_id = ?`,
+      [quotation.customer_id]
+    );
+    if (customerExists.count === 0) {
+      await db.run(`DELETE FROM customers WHERE id = ?`, [
+        quotation.customer_id,
+      ]);
+    }
     return res.status(200).json({
       success: true,
       error: false,

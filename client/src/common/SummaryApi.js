@@ -13,7 +13,10 @@ const SummaryApi = {
     url: "/api/customers",
     method: "put",
   },
-
+  searchCustomer: {
+    url: "/api/customers/customer/search-customer",
+    method: "get",
+  },
   getAllQuotations: {
     url: "/api/quotations",
     method: "get",

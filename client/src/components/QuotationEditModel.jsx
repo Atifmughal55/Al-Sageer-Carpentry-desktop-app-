@@ -60,6 +60,26 @@ const QuotationEditModel = ({ close, cancel, quotation }) => {
     e.preventDefault();
 
     try {
+      if (items.length === 0) {
+        // 🔴 All items removed — delete the whole quotation
+        const response = await Axios({
+          ...SummaryApi.deleteQuotation,
+          url: `${SummaryApi.deleteQuotation.url}/${quotationID}`,
+        });
+
+        const { data } = response;
+
+        if (data.success) {
+          toast.success("All items removed. Quotation deleted.");
+          close();
+        } else {
+          toast.error(data.message || "Failed to delete quotation.");
+        }
+
+        return; // Exit early
+      }
+
+      // ✅ Otherwise: update normally
       const payload = {
         project_name: projectName,
         quotation_items: items,
@@ -71,13 +91,12 @@ const QuotationEditModel = ({ close, cancel, quotation }) => {
         url: `${SummaryApi.updateQuotation.url}/${quotationID}`,
         data: payload,
       });
-      console.log("Response: ", response);
 
       const { data } = response;
 
       if (data.success) {
         toast.success(data.message || "Quotation updated successfully.");
-        close(); // Close modal
+        close();
       } else {
         toast.error(data.message || "Failed to update quotation.");
       }

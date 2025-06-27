@@ -93,3 +93,10 @@ export const updateQuotationModel = async (db, payload, id) => {
     return { success: false, message: "Failed to update quotation.", error };
   }
 };
+
+//Get quotation by quotation-no
+export const getQuotationByNumber = async (db, quotation_no) => {
+  return await db.get(`SELECT * FROM quotations WHERE quotation_no = ?`, [
+    quotation_no,
+  ]);
+};

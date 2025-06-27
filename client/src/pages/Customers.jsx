@@ -3,7 +3,7 @@ import { MdEdit, MdDelete } from "react-icons/md";
 import toast from "react-hot-toast";
 import Axios from "../utils/Axios";
 import SummaryApi from "../common/SummaryApi";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useState } from "react";
 import CustomerEditModel from "../components/CustomerEditModel";
 // Dummy data
@@ -12,6 +12,7 @@ const Customers = () => {
   const [allCustomers, setAllCustomers] = useState([]);
   const [openEditCustomerModel, setOpenEditCustomerModel] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState();
+
   const fetchAllCustomers = async () => {
     try {
       const response = await Axios({
@@ -62,7 +63,26 @@ const Customers = () => {
       toast.error("Something went wrong");
     }
   };
+  const searchTimeout = useRef(null);
 
+  const searchCustomer = async (email, phone) => {
+    try {
+      const response = await Axios({
+        ...SummaryApi.searchCustomer,
+        params: { email, phone },
+      });
+      const { data: responseData } = response;
+
+      if (responseData.success) {
+        toast.success(responseData.message);
+        setAllCustomers([responseData.data]); // Set the found customer
+      } else {
+        toast.error(responseData.message);
+      }
+    } catch (error) {
+      toast.error("No customer found");
+    }
+  };
   useEffect(() => {
     fetchAllCustomers();
   }, []);
@@ -72,7 +92,38 @@ const Customers = () => {
         <h2 className="text-2xl font-bold text-yellow-900">Customers</h2>
         <input
           type="text"
-          placeholder="Search by name / contact..."
+          onChange={(e) => {
+            const { value } = e.target;
+
+            if (searchTimeout.current) {
+              clearTimeout(searchTimeout.current);
+            }
+
+            searchTimeout.current = setTimeout(() => {
+              const trimmedValue = value.trim();
+
+              if (trimmedValue === "") {
+                fetchAllCustomers();
+              } else {
+                let email = "";
+                let phone = "";
+
+                if (trimmedValue.includes("/")) {
+                  const parts = trimmedValue.split("/").map((v) => v.trim());
+                  email = parts[0] || "";
+                  phone = parts[1] || "";
+                } else if (trimmedValue.includes("@")) {
+                  email = trimmedValue;
+                } else {
+                  phone = trimmedValue;
+                }
+
+                searchCustomer(email, phone);
+              }
+            }, 1000);
+            // Delay of 500ms (you can adjust this)
+          }}
+          placeholder="Search by email or phone..."
           className="px-2 py-1 border border-yellow-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500 shadow-sm bg-white text-yellow-900 placeholder-yellow-400"
         />
       </div>
