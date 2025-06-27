@@ -48,7 +48,7 @@ const router = createBrowserRouter([
             element: <Sales />,
           },
           {
-            path: "invoice",
+            path: "invoice/:quotation_no",
             element: <Invoice />,
           },
           {

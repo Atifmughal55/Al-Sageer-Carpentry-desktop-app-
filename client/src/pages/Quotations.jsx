@@ -11,6 +11,11 @@ import QuotationEditModel from "../components/QuotationEditModel";
 import { useDispatch } from "react-redux";
 import { setQuotation, setQuotationItems } from "../reducer/quotationSlice";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
+import {
+  FaArrowUpRightFromSquare,
+  FaSquareArrowUpRight,
+} from "react-icons/fa6";
+
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { useRef } from "react";
@@ -326,10 +331,20 @@ const Quotations = () => {
                           <MdDelete />
                         </button>
                         <button
+                          title="Print"
                           className="p-2 rounded-md bg-green-500 hover:bg-green-600 text-white transition"
                           onClick={() => handleClick(q)}
                         >
                           <BsPrinterFill />
+                        </button>
+                        <button
+                          onClick={() =>
+                            navigate(`/dashboard/invoice/${q.quotation_no}`)
+                          }
+                          title="Generate invoice"
+                          className="p-2 rounded-md bg-purple-400 hover:bg-purple-600 text-white font-bold transition"
+                        >
+                          <FaArrowUpRightFromSquare />
                         </button>
                       </div>
                     </td>
@@ -372,7 +387,7 @@ const Quotations = () => {
           <span className="text-gray-700">{totalQuotations} Quotations</span>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 sticky bottom-0 right-0 z-40">
           <button
             onClick={() => setPage((prev) => prev - 1)}
             disabled={page <= 1}

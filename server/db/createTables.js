@@ -49,21 +49,24 @@ export const createTables = async (db) => {
     CREATE TABLE IF NOT EXISTS invoices (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       invoice_no TEXT UNIQUE NOT NULL,
-      quotation_id INTEGER,
+      quotation_id TEXT,
       customer_id INTEGER NOT NULL,
       customer_trn TEXT,
+      project_name TEXT,
+      total_amount REAL ,
       discount REAL DEFAULT 0,
-      vat_percent REAL DEFAULT 5,
-      total_amount REAL,
-      total_vat REAL,
-      total_with_vat REAL,
-      net_amount REAL,
+      vat REAL default 0,
+      total_with_vat REAL AS (total_amount + vat - discount) STORED,
+      received REAL DEFAULT 0,
+      remaining REAL AS (total_with_vat - received) STORED,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (quotation_id) REFERENCES quotations(id),
       FOREIGN KEY (customer_id) REFERENCES customers(id)
     );
   `);
+
+  // await db.exec(`DROP TABLE IF EXISTS invoices`);
   await db.exec(`
     CREATE TABLE IF NOT EXISTS invoice_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
