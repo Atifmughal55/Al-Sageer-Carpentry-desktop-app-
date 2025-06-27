@@ -11,6 +11,8 @@ import QuotationEditModel from "../components/QuotationEditModel";
 import { useDispatch } from "react-redux";
 import { setQuotation, setQuotationItems } from "../reducer/quotationSlice";
 import { MdChevronLeft, MdChevronRight } from "react-icons/md";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 import { useRef } from "react";
 
 const Quotations = () => {
@@ -26,6 +28,7 @@ const Quotations = () => {
   const dispatch = useDispatch();
 
   const searchTimeout = useRef(null);
+  // Fetch all quotations
   const fetchQuotations = async () => {
     setLoading(true);
     try {
@@ -48,7 +51,7 @@ const Quotations = () => {
       setLoading(false);
     }
   };
-
+  // Delete a quotation
   const deleteQuotation = async (id) => {
     try {
       const response = await Axios({
@@ -66,6 +69,7 @@ const Quotations = () => {
     }
   };
 
+  // Handle status change
   const handleChange = async (e, quotationId) => {
     const newStatus = e.target.value;
 
@@ -94,6 +98,7 @@ const Quotations = () => {
     }
   };
 
+  // Handle click to view quotation items
   const handleClick = async (q) => {
     try {
       const response = await Axios({
@@ -113,16 +118,9 @@ const Quotations = () => {
     } catch (error) {
       toast.error("Something went wrong");
     }
-
-    // dispatch(
-    //   setQuotation({
-    //     customer: q.customer,
-    //     quotation_info: q, // or specific fields from q
-    //     quotation_items: q.quotation_items || [],
-    //   })
-    // );
   };
 
+  // Handle search functionality
   const handleSearch = async (quotationNo) => {
     console.log("Searching for quotation with number:", quotationNo);
     try {
@@ -145,6 +143,29 @@ const Quotations = () => {
       toast.error("Something went wrong while searching");
     }
   };
+
+  const exportToExcel = () => {
+    const exportData = allQuotations.map((q, index) => ({
+      "#": index + 1,
+      "Customer Name": q.customer?.name || "",
+      "Customer Contact": q.customer?.phone || "",
+      "Project Name": q.project_name,
+      "Quotation No": q.quotation_no,
+      Status: q.status,
+      Validity: new Date(q.valid_until).toLocaleDateString(),
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Quotations");
+
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+    const data = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(data, `quotations_${Date.now()}.xlsx`);
+  };
   useEffect(() => {
     fetchQuotations();
   }, [page]);
@@ -153,6 +174,45 @@ const Quotations = () => {
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <h2 className="text-3xl font-bold text-yellow-800">Quotations</h2>
+        <div className="flex gap-4 ">
+          <select
+            className="border px-3 py-2 rounded-md"
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "") return fetchQuotations();
+              const filtered = allQuotations.filter((q) => q.status === value);
+              setAllQuotation(filtered);
+            }}
+          >
+            <option value="">Filter by Status</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="sent">Sent</option>
+            <option value="rejected">Rejected</option>
+          </select>
+
+          <select
+            className="border px-3 py-2 rounded-md"
+            onChange={(e) => {
+              const value = e.target.value;
+              let sorted = [...allQuotations];
+              if (value === "asc") {
+                sorted.sort(
+                  (a, b) => new Date(a.valid_until) - new Date(b.valid_until)
+                );
+              } else if (value === "desc") {
+                sorted.sort(
+                  (a, b) => new Date(b.valid_until) - new Date(a.valid_until)
+                );
+              }
+              setAllQuotation(sorted);
+            }}
+          >
+            <option value="">Sort by Validity</option>
+            <option value="asc">Earliest First</option>
+            <option value="desc">Latest First</option>
+          </select>
+        </div>
 
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
           {/* Search Input */}
@@ -296,6 +356,14 @@ const Quotations = () => {
           cancel={() => setOpenEditQuotation(false)}
         />
       )}
+
+      <button
+        onClick={exportToExcel}
+        className="flex items-center gap-2 mt-3 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-md shadow transition duration-200"
+      >
+        Export Excel
+      </button>
+
       {/* Pagination Controls */}
       <div className="flex justify-between items-center mt-6 ">
         <div className="text-sm text-gray-600">
