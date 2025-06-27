@@ -90,39 +90,47 @@ const Customers = () => {
             </tr>
           </thead>
           <tbody>
-            {allCustomers.map((customer, index) => {
-              return (
-                <tr
-                  key={customer.id}
-                  className="border-t border-yellow-100 hover:bg-yellow-50"
-                >
-                  <td className="py-3 px-4">{index + 1}</td>
-                  <td className="py-3 px-4">{customer.name}</td>
-                  <td className="py-3 px-4">{customer.email}</td>
-                  <td className="py-3 px-4">{customer.phone}</td>
-                  <td className="py-3 px-4">{customer.address}</td>
-                  <td className="py-3 px-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setOpenEditCustomerModel(true);
-                          setSelectedCustomer(customer);
-                        }}
-                        className="p-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white"
-                      >
-                        <MdEdit />
-                      </button>
-                      <button
-                        onClick={() => deleteCustomer(customer.id)}
-                        className="p-2 rounded-md bg-red-500 hover:bg-red-600 text-white"
-                      >
-                        <MdDelete />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+            {allCustomers.length > 0 ? (
+              allCustomers.map((customer, index) => {
+                return (
+                  <tr
+                    key={customer.id}
+                    className="border-t border-yellow-100 hover:bg-yellow-50"
+                  >
+                    <td className="py-3 px-4">{index + 1}</td>
+                    <td className="py-3 px-4">{customer.name}</td>
+                    <td className="py-3 px-4">{customer.email}</td>
+                    <td className="py-3 px-4">{customer.phone}</td>
+                    <td className="py-3 px-4">{customer.address}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setOpenEditCustomerModel(true);
+                            setSelectedCustomer(customer);
+                          }}
+                          className="p-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white"
+                        >
+                          <MdEdit />
+                        </button>
+                        <button
+                          onClick={() => deleteCustomer(customer.id)}
+                          className="p-2 rounded-md bg-red-500 hover:bg-red-600 text-white"
+                        >
+                          <MdDelete />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            ) : (
+              <tr className="border-t border-yellow-100 hover:bg-yellow-50">
+                <td colSpan={8} className="py-3 text-center">
+                  No Customer available
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

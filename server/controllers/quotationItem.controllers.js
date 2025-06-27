@@ -210,16 +210,16 @@ export const getAllQuotationsWithQuotNo = async (req, res) => {
       });
     }
 
-    const quotations = await db.all(
+    const quotation_Items = await db.all(
       `SELECT * FROM quotation_items WHERE quotation_id = ?`,
       [qtno]
     );
-
+    console.log("quotation_Items :", quotation_Items);
     return res.status(200).json({
       success: true,
       error: false,
       message: "Fetched all the quotations.",
-      data: quotations,
+      data: quotation_Items,
     });
   } catch (error) {
     console.log("Error while getting quotations: ", error || error.message);

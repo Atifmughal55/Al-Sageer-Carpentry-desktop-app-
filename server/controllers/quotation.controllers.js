@@ -13,9 +13,11 @@ import {
 } from "../models/quotation.model.js";
 import {
   createQuotationItemModel,
+  delteQuotationItemModel,
   getSingleQuotationModel,
 } from "../models/quotationItem.model.js";
 import { generateQuotationNo } from "../utils/generateId.js";
+import { deleteQuotationItem } from "./quotationItem.controllers.js";
 
 export const getQuotation = async (req, res) => {
   try {
@@ -230,7 +232,6 @@ export const deleteQuotatoin = async (req, res) => {
     }
 
     const checkQuotation = await getSingleQuotationModel(db, id);
-    console.log("checkQuotation :", checkQuotation);
     if (!checkQuotation) {
       return res.status(404).json({
         success: false,
@@ -239,7 +240,21 @@ export const deleteQuotatoin = async (req, res) => {
       });
     }
 
+    const quotationItemsWithQuotation = await db.all(
+      `SELECT * FROM quotation_items WHERE quotation_id = ?`,
+      [checkQuotation.id]
+    );
+
+    if (quotationItemsWithQuotation && quotationItemsWithQuotation.length > 0) {
+      await Promise.all(
+        quotationItemsWithQuotation.map((q) =>
+          delteQuotationItemModel(db, q.id)
+        )
+      );
+    }
+
     await deleteQuotationModel(db, id);
+
     return res.status(200).json({
       success: true,
       error: false,

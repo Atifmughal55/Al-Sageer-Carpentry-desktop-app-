@@ -42,6 +42,7 @@ export const createTables = async (db) => {
       FOREIGN KEY (quotation_id) REFERENCES quotations(id)
     );
   `);
+
   // await db.exec(`DROP TABLE IF EXISTS quotation_items`);
 
   await db.exec(`
