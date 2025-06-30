@@ -1,63 +1,94 @@
-import React, { useState } from "react";
-import { MdEdit, MdDelete } from "react-icons/md";
+import React, { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import {
+  MdEdit,
+  MdDelete,
+  MdArrowLeft,
+  MdChevronLeft,
+  MdChevronRight,
+} from "react-icons/md";
 import { Link } from "react-router-dom";
-
-// Dummy Sales Data
-const initialSalesData = [
-  {
-    id: 1,
-    customerName: "Ahmed Khan",
-    contact: "+92-3012345678",
-    invoice: 245734,
-    totalAmount: 8000,
-    paidAmount: 5000,
-    date: "2025-06-10",
-    status: "Partial",
-  },
-  {
-    id: 2,
-    customerName: "Sara Ali",
-    contact: "+92-3123456789",
-    invoice: 235634,
-    totalAmount: 3000,
-    paidAmount: 3000,
-    date: "2025-06-12",
-    status: "Paid",
-  },
-  {
-    id: 3,
-    customerName: "Zain Raza",
-    contact: "+92-3456789012",
-    invoice: 235463,
-    totalAmount: 6000,
-    paidAmount: 0,
-    date: "2025-06-09",
-    status: "Unpaid",
-  },
-];
-
-// Status color helper
-const getStatusColor = (status) => {
-  switch (status) {
-    case "Paid":
-      return "text-green-600 bg-green-100";
-    case "Partial":
-      return "text-yellow-600 bg-yellow-100";
-    case "Unpaid":
-      return "text-red-600 bg-red-100";
-    default:
-      return "";
-  }
-};
+import Axios from "../utils/Axios.js";
+import SummaryApi from "../common/SummaryApi.js";
+import { FaArrowRotateLeft } from "react-icons/fa6";
 
 const Sales = () => {
-  const [sales, setSales] = useState(initialSalesData);
+  const [loading, setLoading] = useState(false);
+
+  const [sales, setSales] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [sortByDate, setSortByDate] = useState("latest");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalInvoices, setTotalInvoices] = useState(0);
+  const [deletedInvoices, setDeletedInvoices] = useState([]);
+  const [invoiceTypeFilter, setInvoiceTypeFilter] = useState("active"); // "active" | "deleted" | "all"
 
+  const fetchInvoiceData = async () => {
+    try {
+      setLoading(true);
+      const response = await Axios({
+        ...SummaryApi.getAllInvoice,
+        url: `${SummaryApi.getAllInvoice.url}?page=${page}&limit=${limit}`,
+      });
+      const { data: responseData } = response;
+      if (responseData.success) {
+        const allInvoices = responseData.data;
+
+        const assignStatus = (invoice) => {
+          if (invoice.received === 0) return { ...invoice, status: "Unpaid" };
+          else if (invoice.remaining > 0)
+            return { ...invoice, status: "Partial" };
+          else return { ...invoice, status: "Paid" };
+        };
+
+        const active = allInvoices
+          .filter((inv) => inv.is_deleted === 0)
+          .map(assignStatus);
+
+        const deleted = allInvoices
+          .filter((inv) => inv.is_deleted === 1)
+          .map(assignStatus);
+
+        setSales(active);
+        setDeletedInvoices(deleted);
+        setTotalInvoices(allInvoices.length);
+      } else {
+        toast.error("Failed to fetch invoice data.");
+      }
+    } catch (error) {
+      toast.error("Failed to fetch invoice data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteInvoice = async (invoiceId) => {
+    try {
+      const response = await Axios({
+        ...SummaryApi.deleteInvoice,
+        url: `${SummaryApi.deleteInvoice.url}/${invoiceId}`,
+      });
+
+      const { data: responseData } = response;
+      if (responseData.error) {
+        toast.error(responseData.message);
+        return;
+      }
+      toast.success(responseData.message);
+    } catch (error) {
+      toast.error("Failed to delete invoice");
+    }
+  };
   // Filtered and Sorted Sales
-  const filteredSales = sales
+  const filteredSales = [
+    ...(invoiceTypeFilter === "active"
+      ? sales
+      : invoiceTypeFilter === "deleted"
+      ? deletedInvoices
+      : [...sales, ...deletedInvoices]),
+  ]
     .filter((sale) =>
       `${sale.customerName} ${sale.contact} ${sale.invoice}`
         .toLowerCase()
@@ -72,13 +103,37 @@ const Sales = () => {
         : new Date(a.date) - new Date(b.date);
     });
 
+  useEffect(() => {
+    fetchInvoiceData();
+  }, [page, limit]);
+
+  const totalPages = Math.ceil(totalInvoices / limit);
+
+  const recoverInvoice = async (invoiceId) => {
+    try {
+      const response = await Axios({
+        ...SummaryApi.restoreInvoice,
+        url: `${SummaryApi.restoreInvoice.url}/${invoiceId}`,
+      });
+
+      const { data: responseData } = response;
+      if (responseData.error) {
+        toast.error(responseData.message);
+        return;
+      }
+      toast.success(responseData.message);
+      fetchInvoiceData(); // Refresh the data after recovery
+    } catch (error) {
+      toast.error("Failed to recover invoice");
+    }
+  };
   return (
     <div className="p-6">
       {/* Top Bar */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
         <h2 className="text-2xl font-bold text-yellow-900">Sales Records</h2>
         <Link
-          to={"/dashboard/invoice"}
+          to={"/dashboard/invoice/0000"}
           className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md shadow font-semibold"
         >
           + Add Invoice
@@ -114,6 +169,15 @@ const Sales = () => {
           <option value="latest">Date: Latest First</option>
           <option value="oldest">Date: Oldest First</option>
         </select>
+        <select
+          className="border px-4 py-2 rounded-md w-full md:w-1/4"
+          value={invoiceTypeFilter}
+          onChange={(e) => setInvoiceTypeFilter(e.target.value)}
+        >
+          <option value="active">Active Invoices</option>
+          <option value="deleted">Deleted Invoices</option>
+          <option value="all">All Invoices</option>
+        </select>
       </div>
 
       {/* Table */}
@@ -129,57 +193,95 @@ const Sales = () => {
               <th className="py-2 px-2">Paid</th>
               <th className="py-2 px-2">Pending</th>
               <th className="py-2 px-2">Date</th>
-              <th className="py-2 px-2">Status</th>
               <th className="py-2 px-2">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredSales.map((sale, index) => {
-              const pending = sale.totalAmount - sale.paidAmount;
-              return (
-                <tr
-                  key={sale.id}
-                  className="border-t border-yellow-100 hover:bg-yellow-50"
-                >
-                  <td className="py-2 px-2">{index + 1}</td>
-                  <td className="py-2 px-2">{sale.invoice}</td>
-                  <td className="py-2 px-2">{sale.customerName}</td>
-                  <td className="py-2 px-2">{sale.contact}</td>
-                  <td className="py-2 px-2">Rs {sale.totalAmount}</td>
-                  <td className="py-2 px-2">Rs {sale.paidAmount}</td>
-                  <td className="py-2 px-2">Rs {pending}</td>
-                  <td className="py-2 px-2">{sale.date}</td>
-                  <td className="py-2 px-2">
-                    <span
-                      className={`px-3 py-1 text-sm rounded-full font-medium ${getStatusColor(
-                        sale.status
-                      )}`}
-                    >
-                      {sale.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <div className="flex gap-2">
-                      <button className="p-2 rounded-md bg-blue-500 hover:bg-blue-600 text-white">
-                        <MdEdit />
-                      </button>
-                      <button className="p-2 rounded-md bg-red-500 hover:bg-red-600 text-white">
-                        <MdDelete />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-            {filteredSales.length === 0 && (
+            {loading ? (
+              <tr>
+                <td colSpan="10" className="text-center py-6 text-gray-500">
+                  Loading...
+                </td>
+              </tr>
+            ) : filteredSales.length === 0 ? (
               <tr>
                 <td colSpan="10" className="text-center py-6 text-gray-500">
                   No records found.
                 </td>
               </tr>
+            ) : (
+              filteredSales.map((sale, index) => {
+                return (
+                  <tr
+                    key={sale.id}
+                    className={`border-t border-yellow-100 hover:bg-yellow-50 ${
+                      sale.is_deleted ? "bg-red-50 text-gray-500" : ""
+                    }`}
+                  >
+                    <td className="py-2 px-2">
+                      {(page - 1) * limit + index + 1}
+                    </td>
+                    <td className="py-2 px-2">{sale.invoice_no}</td>
+                    <td className="py-2 px-2">{sale.customer?.name}</td>
+                    <td className="py-2 px-2">{sale.customer?.phone}</td>
+                    <td className="py-2 px-2">AED {sale.total_with_vat}</td>
+                    <td className="py-2 px-2">AED {sale.received}</td>
+                    <td className="py-2 px-2">AED {sale.remaining}</td>
+                    <td className="py-2 px-2">
+                      {sale.created_at.split(" ")[0]}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex gap-2">
+                        {!sale.is_deleted ? (
+                          <>
+                            <button className="p-2 rounded-md bg-blue-500 hover:bg-blue-600 hover:scale-105 text-white">
+                              <MdEdit />
+                            </button>
+                            <button
+                              onClick={() => deleteInvoice(sale.id)}
+                              className="p-2 rounded-md bg-red-500 hover:bg-red-600 hover:scale-105 text-white"
+                            >
+                              <MdDelete />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => recoverInvoice(sale.id)}
+                            className="p-2 rounded-md bg-gray-400 hover:bg-green-500 hover:scale-105 text-white"
+                          >
+                            <FaArrowRotateLeft />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
+      </div>
+      <div className="flex justify-between mt-4 gap-2">
+        <div className="mt-4 text-sm text-gray-600">
+          Page {page} of {totalPages} — {totalInvoices} Quotation
+          {totalInvoices !== 1 && "s"}
+        </div>
+        <div className="flex gap-3">
+          <button
+            disabled={page === 1}
+            onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+            className="px-3 py-3 bg-gray-200 rounded-full hover:bg-gray-300"
+          >
+            <MdChevronLeft />
+          </button>
+          <button
+            disabled={page >= totalPages}
+            onClick={() => setPage((prev) => prev + 1)}
+            className="px-3 py-3 bg-gray-200 rounded-full hover:bg-gray-300 disabled:opacity-50"
+          >
+            <MdChevronRight />
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -57,18 +57,6 @@ const CreateQuotation = () => {
     setFormData((prev) => ({ ...prev, items: updated }));
   };
 
-  // const handleSaveDraft = async () => {
-  //   try {
-  //     const res = await Axios({
-  //       ...SummaryApi.createQuotation,
-  //       data: { ...formData, status: "draft" },
-  //     });
-  //     if (res.data.success) toast.success("Draft saved successfully!");
-  //   } catch (err) {
-  //     toast.error("Failed to save draft");
-  //   }
-  // };
-
   const handleSubmit = async () => {
     try {
       const res = await Axios({
@@ -78,13 +66,6 @@ const CreateQuotation = () => {
       if (res.data.success) {
         toast.success(res.data.message);
         navigate("/dashboard/quotations");
-        // navigate(`/dashboard/quotation-print/${res.data.data.quotationNo}`, {
-        //   state: {
-        //     ...formData,
-        //     quotationNo: res.data.data.quotationNo,
-        //     date: new Date().toLocaleDateString(),
-        //   },
-        // });
       }
     } catch (err) {
       toast.error("Failed to create quotation");

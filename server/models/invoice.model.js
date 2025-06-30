@@ -24,8 +24,33 @@ export const getInvoiceByIdModel = async (db, id) => {
   return { invoice, customer, invoice_items };
 };
 
+//get invoice by quotation_no
+export const getInvoiceByQuotationNoModel = async (db, quotation_no) => {
+  // Get invoice by quotation_no
+  const invoice = await db.get(
+    `SELECT * FROM invoices WHERE quotation_id = ?`,
+    [quotation_no]
+  );
+
+  if (!invoice) return { invoice: null };
+
+  // Get customer by customer_id
+  const customer = await db.get(`SELECT * FROM customers WHERE id = ?`, [
+    invoice.customer_id,
+  ]);
+
+  // Get invoice_items against this invoice
+  const invoice_items = await db.all(
+    `SELECT * FROM invoice_items WHERE invoice_id = ? `,
+    [invoice.id]
+  );
+
+  return { invoice, customer, invoice_items };
+};
+
 // create a new invoice
 export const createInvoiceModel = async (db, invoiceData) => {
+  //
   const {
     invoice_no,
     quotation_id,
@@ -53,9 +78,6 @@ export const createInvoiceModel = async (db, invoiceData) => {
 
 //Delete an invoice by ID
 export const deleteInvoiceModel = async (db, id) => {
-  // Delete invoice items first
-  await db.run(`DELETE FROM invoice_items WHERE invoice_id = ?`, [id]);
-
-  // Then delete the invoice
-  return db.run(`DELETE FROM invoices WHERE id = ?`, [id]);
+  //Soft delete invoice by setting is_deleted to 1
+  return db.run(`UPDATE invoices SET is_deleted = 1 WHERE id = ?`, [id]);
 };

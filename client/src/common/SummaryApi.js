@@ -17,6 +17,8 @@ const SummaryApi = {
     url: "/api/customers/customer/search-customer",
     method: "get",
   },
+
+  // Quotation APIs
   getAllQuotations: {
     url: "/api/quotations",
     method: "get",
@@ -44,6 +46,36 @@ const SummaryApi = {
   searchQuotation: {
     url: "/api/quotations/search/quotation",
     method: "get",
+  },
+
+  // Invoice APIs
+  getAllInvoice: {
+    url: "/api/invoices",
+    method: "get",
+  },
+
+  getInvoiceById: {
+    url: "/api/invoices/:id",
+    method: "get",
+  },
+
+  getInvoiceByQuotationNo: {
+    url: "/api/invoices/invoice/:quotation_no",
+    method: "get",
+  },
+
+  deleteInvoice: {
+    url: "/api/invoices",
+    method: "delete",
+  },
+
+  createInvoice: {
+    url: "/api/invoices",
+    method: "post",
+  },
+  restoreInvoice: {
+    url: "/api/invoices/recover-invoice",
+    method: "put",
   },
 };
 
