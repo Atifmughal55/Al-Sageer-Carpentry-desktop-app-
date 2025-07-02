@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 import Axios from "../utils/Axios.js";
 import SummaryApi from "../common/SummaryApi.js";
 import { FaArrowRotateLeft } from "react-icons/fa6";
+import InvoiceEditModel from "../components/InvoiceEditModel.jsx";
 
 const Sales = () => {
   const [loading, setLoading] = useState(false);
@@ -24,6 +25,7 @@ const Sales = () => {
   const [totalInvoices, setTotalInvoices] = useState(0);
   const [deletedInvoices, setDeletedInvoices] = useState([]);
   const [invoiceTypeFilter, setInvoiceTypeFilter] = useState("active"); // "active" | "deleted" | "all"
+  const [openInvoiceEditModel, setOpenInvoiceEditModel] = useState(false);
 
   const fetchInvoiceData = async () => {
     try {
@@ -64,6 +66,48 @@ const Sales = () => {
     }
   };
 
+  const performSearch = async (query) => {
+    try {
+      setLoading(true);
+      const response = await Axios({
+        ...SummaryApi.searchInvoice,
+        url: `${SummaryApi.searchInvoice.url}?search=${query}`,
+      });
+
+      const { data: responseData } = response;
+      console.log("Search Response Data:", responseData);
+      if (responseData.success) {
+        setSales([responseData.data]);
+        toast.success(responseData.message);
+        //   const assignStatus = (invoice) => {
+        //     if (invoice.received === 0) return { ...invoice, status: "Unpaid" };
+        //     else if (invoice.remaining > 0)
+        //       return { ...invoice, status: "Partial" };
+        //     else return { ...invoice, status: "Paid" };
+        //   };
+
+        //   const active = responseData.data
+        //     .filter((inv) => inv.is_deleted === 0)
+        //     .map(assignStatus);
+
+        //   const deleted = responseData.data
+        //     .filter((inv) => inv.is_deleted === 1)
+        //     .map(assignStatus);
+
+        //   setDeletedInvoices(deleted);
+        //   setTotalInvoices(responseData.data.length);
+      } else {
+        toast.error("No records found.");
+        setSales([]);
+        setDeletedInvoices([]);
+      }
+    } catch (error) {
+      toast.error("Search request failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const deleteInvoice = async (invoiceId) => {
     try {
       const response = await Axios({
@@ -77,6 +121,7 @@ const Sales = () => {
         return;
       }
       toast.success(responseData.message);
+      fetchInvoiceData();
     } catch (error) {
       toast.error("Failed to delete invoice");
     }
@@ -90,18 +135,27 @@ const Sales = () => {
       : [...sales, ...deletedInvoices]),
   ]
     .filter((sale) =>
-      `${sale.customerName} ${sale.contact} ${sale.invoice}`
-        .toLowerCase()
-        .includes(search.toLowerCase())
-    )
-    .filter((sale) =>
       statusFilter === "All" ? true : sale.status === statusFilter
     )
     .sort((a, b) => {
       return sortByDate === "latest"
-        ? new Date(b.date) - new Date(a.date)
-        : new Date(a.date) - new Date(b.date);
+        ? new Date(b.created_at) - new Date(a.created_at)
+        : new Date(a.created_at) - new Date(b.created_at);
     });
+
+  useEffect(() => {
+    const delayDebounce = setTimeout(() => {
+      setPage(1); // ✅ Reset to first page when searching
+      if (search.trim() === "") {
+        fetchInvoiceData();
+      } else {
+        console.log("Searching for:", search);
+        performSearch(search);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounce);
+  }, [search]);
 
   useEffect(() => {
     fetchInvoiceData();
@@ -234,7 +288,10 @@ const Sales = () => {
                       <div className="flex gap-2">
                         {!sale.is_deleted ? (
                           <>
-                            <button className="p-2 rounded-md bg-blue-500 hover:bg-blue-600 hover:scale-105 text-white">
+                            <button
+                              onClick={() => setOpenInvoiceEditModel(true)}
+                              className="p-2 rounded-md bg-blue-500 hover:bg-blue-600 hover:scale-105 text-white"
+                            >
                               <MdEdit />
                             </button>
                             <button
@@ -243,6 +300,14 @@ const Sales = () => {
                             >
                               <MdDelete />
                             </button>
+                            {/* Invoice Edit Modal */}
+                            {openInvoiceEditModel && (
+                              <InvoiceEditModel
+                                selectedInvoice={sale}
+                                close={() => setOpenInvoiceEditModel(false)}
+                                cancel={() => setOpenInvoiceEditModel(false)}
+                              />
+                            )}
                           </>
                         ) : (
                           <button
@@ -266,6 +331,7 @@ const Sales = () => {
           Page {page} of {totalPages} — {totalInvoices} Quotation
           {totalInvoices !== 1 && "s"}
         </div>
+
         <div className="flex gap-3">
           <button
             disabled={page === 1}

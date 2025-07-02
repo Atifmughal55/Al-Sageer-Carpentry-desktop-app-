@@ -77,6 +77,18 @@ const SummaryApi = {
     url: "/api/invoices/recover-invoice",
     method: "put",
   },
+  searchInvoice: {
+    url: "/api/invoices/invoice/search",
+    method: "get",
+  },
+  getInvoiceItems: {
+    url: "/api/invoices/invoice/invoice-items",
+    method: "get",
+  },
+  editInvoice: {
+    url: "/api/invoices/invoice",
+    method: "put",
+  },
 };
 
 export default SummaryApi;

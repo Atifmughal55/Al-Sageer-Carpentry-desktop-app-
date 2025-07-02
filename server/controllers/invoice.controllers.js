@@ -12,6 +12,7 @@ import {
 } from "../models/invoice.model.js";
 import { createInvoiceItemModel } from "../models/invoiceItem.model.js";
 
+// get all invoices with pagination and customer info
 export const getAllInvoiceController = async (req, res) => {
   const { db } = req.app.locals;
   const page = parseInt(req.query.page) || 1;
@@ -69,6 +70,7 @@ export const getAllInvoiceController = async (req, res) => {
   }
 };
 
+//get invoice by id
 export const getInvoiceByIdController = async (req, res) => {
   const { db } = req.app.locals;
   const { id } = req.params;
@@ -104,6 +106,7 @@ export const getInvoiceByIdController = async (req, res) => {
   }
 };
 
+//get invoice by quotation number
 export const getInvoiceByQuotationNoController = async (req, res) => {
   const { db } = req.app.locals;
   const { quotation_no } = req.params;
@@ -144,6 +147,7 @@ export const getInvoiceByQuotationNoController = async (req, res) => {
   }
 };
 
+// Create a new invoice
 export const createInvoiceController = async (req, res) => {
   const { db } = req.app.locals;
   const invoiceData = req.body;
@@ -227,6 +231,7 @@ export const createInvoiceController = async (req, res) => {
   }
 };
 
+// Delete an invoice
 export const deleteInvoiceController = async (req, res) => {
   const { db } = req.app.locals;
   const { id } = req.params;
@@ -257,6 +262,7 @@ export const deleteInvoiceController = async (req, res) => {
   }
 };
 
+// Restore an invoice
 export const restoreInvoiceController = async (req, res) => {
   const { db } = req.app.locals;
   const { id } = req.params;
@@ -285,6 +291,260 @@ export const restoreInvoiceController = async (req, res) => {
     res.status(500).json({
       success: false,
       error: true,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+// Get search invoice
+export const searchInvoiceController = async (req, res) => {
+  const { db } = req.app.locals;
+  const { search } = req.query;
+  if (!search) {
+    return res.status(400).json({
+      success: false,
+      error: true,
+      message: "Search query is required",
+    });
+  }
+
+  try {
+    const invoice = await db.get(
+      `SELECT * FROM invoices WHERE invoice_no = ?`,
+      [search]
+    );
+
+    if (!invoice || invoice.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: true,
+        message: "No invoices found",
+      });
+    }
+
+    // Attach customer info to each invoice
+    const customer = await getCustomerByIdModel(invoice.customer_id, db);
+
+    const invoice_items = await db.all(
+      `SELECT * FROM invoice_items WHERE invoice_id = ?`,
+      [invoice.invoice_no]
+    );
+    res.status(200).json({
+      success: true,
+      error: false,
+      message: "Invoices retrieved successfully",
+      data: { ...invoice, customer, invoice_items },
+    });
+  } catch (error) {
+    console.log("Error in searchInvoiceController:", error);
+    res.status(500).json({
+      success: false,
+      error: true,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+// Get invoice items by invoice number
+export const getInvoiceItemByInvoicenoController = async (req, res) => {
+  const { db } = req.app.locals;
+  const { invoice_no } = req.params;
+  if (!invoice_no) {
+    return res.status(400).json({
+      success: false,
+      error: true,
+      message: "Invoice number is required",
+    });
+  }
+  try {
+    const invoiceItems = await db.all(
+      `SELECT * FROM invoice_items WHERE invoice_id = ?`,
+      [invoice_no]
+    );
+
+    if (!invoiceItems || invoiceItems.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: true,
+        message: "No invoice items found for this invoice",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      error: false,
+      message: "Invoice items retrieved successfully",
+      data: invoiceItems,
+    });
+  } catch (error) {
+    console.log("Error in getInvoiceItemByInvoicenoController:", error);
+    res.status(500).json({
+      success: false,
+      error: true,
+      message: "Internal Server Error",
+    });
+  }
+};
+
+// Update invoice
+export const updateInvoiceController = async (req, res) => {
+  const { db } = req.app.locals;
+  const { id } = req.params;
+  const { invoice, items, customer } = req.body;
+
+  try {
+    // Validate existing invoice
+    const existing = await getInvoiceByIdModel(db, id);
+    if (!existing.invoice) {
+      return res.status(404).json({
+        success: false,
+        error: true,
+        message: "Invoice not found",
+      });
+    }
+
+    // Optional: Update customer (if provided)
+    if (customer?.id) {
+      await db.run(
+        `UPDATE customers SET name = ?, email = ?, phone = ?, address = ? WHERE id = ?`,
+        [
+          customer.name || "",
+          customer.email || "",
+          customer.phone || "",
+          customer.address || "",
+          customer.id,
+        ]
+      );
+    }
+
+    // Calculations
+    const discount = items.reduce(
+      (acc, item) =>
+        acc +
+        ((item.discount || 0) / 100) *
+          (item.unit_price || 0) *
+          (item.quantity || 0),
+      0
+    );
+
+    const vat = items.reduce(
+      (acc, item) =>
+        acc +
+        ((item.vat || 0) / 100) * (item.unit_price || 0) * (item.quantity || 0),
+      0
+    );
+
+    const totalAmount = items.reduce(
+      (acc, item) => acc + (item.unit_price || 0) * (item.quantity || 0),
+      0
+    );
+
+    const updatedInvoice = {
+      invoice_no: invoice.invoice_no,
+      quotation_id: invoice.quotation_id,
+      customer_id: customer?.id || existing.invoice.customer_id,
+      customer_trn: invoice.customer_trn,
+      project_name: invoice.project_name,
+      total_amount: totalAmount,
+      discount,
+      vat,
+      received: invoice.received || 0,
+    };
+
+    // Update the invoice
+    await db.run(
+      `UPDATE invoices SET 
+        invoice_no = ?, 
+        quotation_id = ?, 
+        customer_id = ?, 
+        customer_trn = ?, 
+        project_name = ?, 
+        total_amount = ?, 
+        discount = ?, 
+        vat = ?, 
+        received = ?
+      WHERE id = ?`,
+      [
+        updatedInvoice.invoice_no,
+        updatedInvoice.quotation_id,
+        updatedInvoice.customer_id,
+        updatedInvoice.customer_trn,
+        updatedInvoice.project_name,
+        updatedInvoice.total_amount,
+        updatedInvoice.discount,
+        updatedInvoice.vat,
+        updatedInvoice.received,
+
+        id,
+      ]
+    );
+
+    // Get existing item IDs
+    const existingItems = await db.all(
+      `SELECT id FROM invoice_items WHERE invoice_id = ?`,
+      [updatedInvoice.invoice_no]
+    );
+    console.log("Existing items:", existingItems);
+    const existingItemIds = existingItems.map((i) => i.id);
+    console.log("Existing item IDs:", existingItemIds);
+    console.log("Incoming items:", items);
+    const incomingItemIds = items.filter((i) => i.id).map((i) => i.id);
+
+    // Delete removed items (optional)
+    const deletedItems = existingItemIds.filter(
+      (id) => !incomingItemIds.includes(id)
+    );
+    for (const itemId of deletedItems) {
+      await db.run(`DELETE FROM invoice_items WHERE id = ?`, [itemId]);
+    }
+
+    // Update or insert items
+    for (const item of items) {
+      if (item.id) {
+        // Update
+        await db.run(
+          `UPDATE invoice_items SET 
+            description = ?, 
+            quantity = ?, 
+            unit_price = ?, 
+            discount = ?, 
+            vat = ? 
+          WHERE id = ?`,
+          [
+            item.description,
+            item.quantity,
+            item.unit_price,
+            item.discount,
+            item.vat,
+            item.id,
+          ]
+        );
+      } else {
+        // Insert
+        await db.run(
+          `INSERT INTO invoice_items 
+            (invoice_id, description, quantity, unit_price, discount, vat) 
+          VALUES (?, ?, ?, ?, ?, ?)`,
+          [
+            updatedInvoice.invoice_no,
+            item.description,
+            item.quantity,
+            item.unit_price,
+            item.discount,
+            item.vat,
+          ]
+        );
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Invoice updated successfully",
+    });
+  } catch (error) {
+    console.error("Error in updateInvoiceController:", error);
+    return res.status(500).json({
+      success: false,
       message: "Internal Server Error",
     });
   }
