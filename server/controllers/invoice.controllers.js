@@ -279,12 +279,16 @@ export const restoreInvoiceController = async (req, res) => {
     }
 
     // Restore the invoice by setting is_deleted to 0
-    await db.run(`UPDATE invoices SET is_deleted = 0 WHERE id = ?`, [id]);
+    const restorePurchase = await db.run(
+      `UPDATE invoices SET is_deleted = 0 WHERE id = ?`,
+      [id]
+    );
 
     res.status(200).json({
       success: true,
       error: false,
       message: "Invoice restored successfully",
+      data: restorePurchase,
     });
   } catch (error) {
     console.log("Error in restoreInvoiceController:", error);
@@ -484,10 +488,9 @@ export const updateInvoiceController = async (req, res) => {
       `SELECT id FROM invoice_items WHERE invoice_id = ?`,
       [updatedInvoice.invoice_no]
     );
-    console.log("Existing items:", existingItems);
+
     const existingItemIds = existingItems.map((i) => i.id);
-    console.log("Existing item IDs:", existingItemIds);
-    console.log("Incoming items:", items);
+
     const incomingItemIds = items.filter((i) => i.id).map((i) => i.id);
 
     // Delete removed items (optional)

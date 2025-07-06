@@ -280,7 +280,22 @@ const Sales = () => {
                     <td className="py-2 px-2">{sale.customer?.phone}</td>
                     <td className="py-2 px-2">AED {sale.total_with_vat}</td>
                     <td className="py-2 px-2">AED {sale.received}</td>
-                    <td className="py-2 px-2">AED {sale.remaining}</td>
+                    <td className="py-2 px-2 font-semibold">
+                      {sale.remaining < 0 ? (
+                        <span className=" text-blue-600 font-bold">
+                          Balance: {Math.abs(sale.remaining)}
+                        </span>
+                      ) : sale.remaining === 0 ? (
+                        <span className="text-green-600 font-semibold">
+                          Paid
+                        </span>
+                      ) : (
+                        <span className="text-red-600 font-medium">
+                          Payable: {sale.remaining}
+                        </span>
+                      )}
+                    </td>
+
                     <td className="py-2 px-2">
                       {sale.created_at.split(" ")[0]}
                     </td>

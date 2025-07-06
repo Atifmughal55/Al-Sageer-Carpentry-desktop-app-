@@ -101,5 +101,22 @@ export const createTables = async (db) => {
 
   // await db.exec(`DROP TABLE IF EXISTS invoice_items`);
 
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS purchases (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+  purchase_no TEXT NOT NULL UNIQUE,
+  supplier_name TEXT NOT NULL,
+  description TEXT NOT NULL, -- All items described in plain text
+  total_amount REAL NOT NULL,
+  paid_amount REAL NOT NULL,
+  balance AS (total_amount - paid_amount) STORED,
+  payment_status TEXT,
+  purchase_date DATE NOT NULL DEFAULT (DATE('now')),
+  remarks TEXT,
+  is_deleted INTEGER DEFAULT 0, -- 👈 Correct way to set boolean-like field
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+  // await db.exec(`DROP TABLE IF EXISTS purchases`);
   console.log("✅ All tables created successfully");
 };

@@ -89,6 +89,28 @@ const SummaryApi = {
     url: "/api/invoices/invoice",
     method: "put",
   },
+
+  getAllPurchases: {
+    url: "/api/purchases",
+    method: "get",
+  },
+  deletePurchase: {
+    url: "/api/purchases",
+    method: "delete",
+  },
+  recoverPurchase: {
+    url: "/api/purchases/restore",
+    method: "put",
+  },
+
+  createPurchase: {
+    url: "/api/purchases",
+    method: "post",
+  },
+  editPurchase: {
+    url: "/api/purchases",
+    method: "put",
+  },
 };
 
 export default SummaryApi;

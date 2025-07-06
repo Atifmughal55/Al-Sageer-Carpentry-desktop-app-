@@ -12,6 +12,7 @@ import Invoice from "../pages/Invoice";
 import InvoicePrint from "../pages/InvoicePrint";
 import CreateQuotation from "../pages/CreateQuotation";
 import QuotationPrint from "../pages/QuotationPrint";
+import NotFound from "../pages/NotFound";
 
 const router = createBrowserRouter([
   {
@@ -64,6 +65,10 @@ const router = createBrowserRouter([
             element: <QuotationPrint />,
           },
         ],
+      },
+      {
+        path: "*",
+        element: <NotFound />,
       },
     ],
   },
