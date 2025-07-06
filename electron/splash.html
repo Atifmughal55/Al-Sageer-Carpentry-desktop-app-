@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Loading Al Sageer</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #fefce8; /* Tailwind yellow-50 (light background) */
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: "Segoe UI", sans-serif;
+      }
+
+      .logo {
+        width: 80px;
+        height: 80px;
+        background-color: #78350f; /* Tailwind bg-yellow-900 */
+        color: #fef9c3; /* Tailwind text-yellow-100 */
+        font-size: 32px;
+        font-weight: bold;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        animation: pop-in 0.6s ease forwards;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      }
+
+      @keyframes pop-in {
+        0% {
+          transform: scale(0.3);
+          opacity: 0;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      .loader-text {
+        margin-top: 20px;
+        font-size: 22px;
+        font-weight: 600;
+        color: #78350f; /* Tailwind yellow-900 */
+        animation: fadeIn 1s ease-in;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .bouncing-loader {
+        display: flex;
+        justify-content: center;
+        margin-top: 30px;
+      }
+
+      .bouncing-loader > div {
+        width: 14px;
+        height: 14px;
+        margin: 3px;
+        background: #78350f; /* Tailwind yellow-900 */
+        border-radius: 50%;
+        animation: bounce 0.6s infinite alternate;
+      }
+
+      .bouncing-loader > div:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+
+      .bouncing-loader > div:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes bounce {
+        from {
+          transform: translateY(0px);
+        }
+        to {
+          transform: translateY(-15px);
+        }
+      }
+
+      .footer {
+        margin-top: 40px;
+        font-size: 14px;
+        color: #92400e; /* Tailwind yellow-800 */
+      }
+    </style>
+  </head>
+  <body>
+    <div class="logo">SC</div>
+    <div class="loader-text">Loading Al Sageer Carpentry...</div>
+
+    <div class="bouncing-loader">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+
+    <div class="footer">Please wait while we prepare everything...</div>
+  </body>
+</html>

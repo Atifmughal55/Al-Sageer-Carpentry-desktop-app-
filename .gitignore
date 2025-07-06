@@ -1,0 +1,45 @@
+# Node.js dependencies
+**/node_modules/
+**/dist/
+**/build/
+
+# Logs
+**/logs/
+**/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+**/.env
+**/.env.*
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# IDE folders
+.vscode/
+.idea/
+
+# Electron
+electron/out/
+electron/*.exe
+electron/*.app
+electron/*.asar
+
+# Misc
+*.tgz
+*.zip
+
+# Optional: Ignore coverage reports
+**/coverage/
+
+# Optional: Ignore SQLite database files
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+**/*.db3
+
+# Optional: Ignore build artifacts
+**/*.tsbuildinfo
