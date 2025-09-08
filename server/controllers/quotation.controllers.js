@@ -51,7 +51,6 @@ export const getQuotation = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log("Error while getting quotation: ", error || error.message);
     return res.status(500).json({
       success: false,
       error: true,
@@ -63,13 +62,19 @@ export const getQuotation = async (req, res) => {
 export const getAllQuotations = async (req, res) => {
   try {
     const db = req.app.locals.db;
-
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
     // Get all quotations
     const quotations = await allQuotations(db, limit, offset);
+    // Fetch total number of quotations
+    const totalCountResult = await db.get(
+      `SELECT COUNT(*) as count FROM quotations`
+    );
+    const totalCount = totalCountResult?.count || 0;
 
+    // Calculate total pages
+    const totalPages = Math.ceil(totalCount / limit);
     // For each quotation, fetch its customer using customer_id
     const quotationsWithCustomer = await Promise.all(
       quotations.map(async (quotation) => {
@@ -84,15 +89,15 @@ export const getAllQuotations = async (req, res) => {
     return res.status(200).json({
       success: true,
       error: false,
-      page: page,
-      offset: offset,
-      limit: limit,
+      page,
+      offset,
+      limit,
       message: "Fetched all the quotations.",
-      total_quotations: quotationsWithCustomer.length,
+      total_quotations: totalCount, // total in DB
+      total_pages: totalPages,
       data: quotationsWithCustomer,
     });
   } catch (error) {
-    console.log("Error while fetching quotations: ", error || error.message);
     return res.status(500).json({
       success: false,
       error: true,
@@ -105,7 +110,6 @@ export const getQuotationByNo = async (req, res) => {
   try {
     const db = req.app.locals.db;
     const { quotation_no } = req.params;
-    console.log("Quotation number received:", quotation_no);
     if (!quotation_no) {
       return res.status(400).json({
         success: false,
@@ -140,7 +144,6 @@ export const getQuotationByNo = async (req, res) => {
       message: "Quotation fetched successfully.",
     });
   } catch (error) {
-    console.error("Error fetching quotation:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error.",
@@ -162,7 +165,6 @@ export const getQuotationsWithCustomer = async (req, res) => {
       data: quotations,
     });
   } catch (error) {
-    console.log("Error while fetching quotations: ", error || error.message);
     return res.status(500).json({
       success: false,
       error: true,
@@ -252,7 +254,6 @@ export const createQuotation = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Error while creating quotation:", error);
     return res.status(500).json({
       success: false,
       error: true,
@@ -311,7 +312,6 @@ export const deleteQuotatoin = async (req, res) => {
       message: "Quotation Deleted Successfully",
     });
   } catch (error) {
-    console.log("Error while deleting quotation: ", error || error.message);
     return res.status(500).json({
       success: false,
       error: true,
@@ -326,7 +326,6 @@ export const updateQuotation = async (req, res) => {
     const { id } = req.params;
     const payload = req.body;
 
-    console.log("payload: ", payload);
     const result = await updateQuotationModel(db, payload, id);
 
     if (result.success) {
@@ -342,7 +341,6 @@ export const updateQuotation = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("Controller error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error.",
@@ -384,7 +382,6 @@ export const updateStatus = async (req, res) => {
       message: "Quotation status updated successfully",
     });
   } catch (error) {
-    console.log("Error while updating status: ", error.message || error);
     return res.status(500).json({
       success: false,
       error: true,

@@ -14,6 +14,7 @@ export const createNewPurchaseController = async (req, res) => {
     description,
     total_amount,
     paid_amount,
+    payment_status,
     remarks,
   } = req.body;
   if (
@@ -22,6 +23,7 @@ export const createNewPurchaseController = async (req, res) => {
     !description ||
     !total_amount ||
     !paid_amount ||
+    !payment_status ||
     !remarks
   ) {
     return res.status(400).json({
@@ -50,6 +52,7 @@ export const createNewPurchaseController = async (req, res) => {
       description,
       total_amount,
       paid_amount,
+      payment_status,
       remarks,
     };
 
@@ -87,7 +90,7 @@ export const getAllPurchasesController = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      erroR: false,
+      error: false,
       message: "fetched all purchases",
       totalPurchases: allPurchases.length,
       data: allPurchases,
@@ -128,6 +131,40 @@ export const getPurchaseByIDController = async (req, res) => {
       error: false,
       message: "Purchase fetched successfully",
       data: purchase,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: true,
+      message: "Internal server error",
+    });
+  }
+};
+
+//getPurchaseBY P-No
+export const getPurchaseByPurchaseNoController = async (req, res) => {
+  try {
+    const { db } = req.app.locals;
+    const { purchaseNo } = req.params;
+
+    const purchase = await db.get(
+      `SELECT * FROM purchases WHERE purchase_no = ?`,
+      [purchaseNo]
+    );
+
+    if (!purchase) {
+      return res.status(404).json({
+        success: false,
+        error: true,
+        success: "Purchase not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      error: false,
+      data: purchase,
+      message: "Purchase found successfully",
     });
   } catch (error) {
     return res.status(500).json({
@@ -196,7 +233,6 @@ export const recoverDeletedPurchases = async (req, res) => {
         message: "Purchase not found",
       });
     }
-    console.log("Purchases: ", purchase);
 
     const recoverPurchase = await db.run(
       `UPDATE purchases SET is_deleted=0 where id = ?`,
@@ -267,7 +303,36 @@ export const updatePurchaseController = async (req, res) => {
       updated: data, // optional: send updated values back
     });
   } catch (error) {
-    console.error("Update purchase error:", error); // optional log
+    return res.status(500).json({
+      success: false,
+      error: true,
+      message: "Internal server error",
+    });
+  }
+};
+
+//permanently Deleted Purchase
+export const permanentlyDeletePurchaseController = async (req, res) => {
+  try {
+    const { db } = req.app.locals;
+    const { id } = req.params;
+
+    const purchase = await getPurchaseByIDModel(db, id);
+    if (!purchase) {
+      return res.status(404).json({
+        success: false,
+        error: true,
+        message: "Purchase not found",
+      });
+    }
+
+    await db.run(`DELETE FROM purchases WHERE id = ?`, [id]);
+    return res.status(200).json({
+      success: true,
+      error: false,
+      message: "Purchase permanently deleted",
+    });
+  } catch (error) {
     return res.status(500).json({
       success: false,
       error: true,

@@ -13,6 +13,9 @@ import InvoicePrint from "../pages/InvoicePrint";
 import CreateQuotation from "../pages/CreateQuotation";
 import QuotationPrint from "../pages/QuotationPrint";
 import NotFound from "../pages/NotFound";
+import ForgotPassword from "../pages/ForgotPassword";
+import Profile from "../pages/Profile";
+import WalkInCustomer from "../pages/WalkInCustomer";
 
 const router = createBrowserRouter([
   {
@@ -24,6 +27,10 @@ const router = createBrowserRouter([
         element: <Login />,
       },
       {
+        path: "/forgot-password",
+        element: <ForgotPassword />,
+      },
+      {
         path: "dashboard",
         element: <Dashboard />,
         children: [
@@ -31,7 +38,10 @@ const router = createBrowserRouter([
             path: "",
             element: <MainPage />,
           },
-
+          {
+            path: "profile",
+            element: <Profile />,
+          },
           {
             path: "quotations",
             element: <Quotations />,
@@ -63,6 +73,10 @@ const router = createBrowserRouter([
           {
             path: "quotation-print/:quotationNo",
             element: <QuotationPrint />,
+          },
+          {
+            path: "walk-in",
+            element: <WalkInCustomer />,
           },
         ],
       },

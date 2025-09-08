@@ -54,7 +54,6 @@ const InvoiceEditModal = ({ selectedInvoice, close, cancel }) => {
       customer: invoice.customer, // Assuming customer data is part of the invoice
       items: invoiceItems, // Add this
     };
-    console.log("Updated Invoice Data:", updatedInvoice);
     try {
       const response = await Axios({
         ...SummaryApi.editInvoice,
@@ -159,7 +158,7 @@ const InvoiceEditModal = ({ selectedInvoice, close, cancel }) => {
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex justify-center items-start overflow-y-auto p-4">
       <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] overflow-y-auto transition-all duration-300 scale-100">
         {/* Header */}
         <div className="flex justify-between items-center bg-gradient-to-r from-blue-600 to-blue-500 text-white px-6 py-4">

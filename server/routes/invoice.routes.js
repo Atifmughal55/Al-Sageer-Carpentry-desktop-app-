@@ -2,12 +2,14 @@ import { Router } from "express";
 import {
   createInvoiceController,
   deleteInvoiceController,
+  deleteInvoicePermanently,
   getAllInvoiceController,
   getInvoiceByIdController,
   getInvoiceByQuotationNoController,
   getInvoiceItemByInvoicenoController,
   restoreInvoiceController,
   searchInvoiceController,
+  summary,
   updateInvoiceController,
 } from "../controllers/invoice.controllers.js";
 
@@ -25,4 +27,6 @@ router.get(
   getInvoiceItemByInvoicenoController
 );
 router.put("/invoice/:id", updateInvoiceController);
+router.delete("/remove-invoice/:id", deleteInvoicePermanently);
+router.get("/sale/summary",summary)
 export default router;

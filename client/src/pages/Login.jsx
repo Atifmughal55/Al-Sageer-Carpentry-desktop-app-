@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import Axios from "../utils/Axios";
+import SummaryApi from "../common/SummaryApi";
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -15,12 +18,26 @@ const Login = () => {
   const handleChange = (e) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.email || formData.password) {
+
+    try {
+      const response = await Axios({
+        ...SummaryApi.login,
+        data: {
+          email: formData.email,
+          password: formData.password,
+        },
+      });
+
+      const { email } = response.data;
+      localStorage.setItem("user", email);
+      toast.success("Login successful");
       navigate("/dashboard");
+    } catch (error) {
+      console.log("Error in login: ", error);
+      toast.error(error.response?.data?.message || "Invalid email or password");
     }
-    // Add your login logic here
   };
 
   return (

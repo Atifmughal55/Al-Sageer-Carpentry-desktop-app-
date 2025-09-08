@@ -11,14 +11,13 @@ export const getSingleInvoiceItemModel = (db, id) => {
 //create new invoice item
 export const createInvoiceItemModel = (db, data) => {
   return db.run(
-    `INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, discount,vat)
-     VALUES (?, ?, ?, ?, ?,?)`,
+    `INSERT INTO invoice_items (invoice_id, description, quantity, unit_price,vat)
+     VALUES (?, ?, ?,  ?,?)`,
     [
       data.invoice_id,
       data.description,
       data.quantity,
       data.unit_price,
-      data.discount,
       data.vat,
     ]
   );

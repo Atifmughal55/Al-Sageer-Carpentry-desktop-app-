@@ -1,15 +1,14 @@
 import React from "react";
+import { FaRegUser } from "react-icons/fa";
 import {
   MdDashboard,
   MdShoppingCart,
   MdRequestQuote,
   MdAttachMoney,
   MdPeople,
-  MdAccountBalance,
-  MdPointOfSale,
-  MdReceipt,
   MdLogout,
 } from "react-icons/md";
+import { IoPersonAdd } from "react-icons/io5";
 import { useLocation, useNavigate } from "react-router-dom";
 
 // Define menu with path
@@ -30,11 +29,13 @@ const menuItems = [
     icon: <MdRequestQuote />,
     path: "/dashboard/quotations",
   },
-
+  {
+    label: "Walk-In",
+    icon: <IoPersonAdd />,
+    path: "/dashboard/walk-in",
+  },
   { label: "Customers", icon: <MdPeople />, path: "/dashboard/customers" },
-  { label: "Taxes", icon: <MdAccountBalance />, path: "/dashboard/taxes" },
-  { label: "Cash", icon: <MdPointOfSale />, path: "/dashboard/cash" },
-  { label: "Expenses", icon: <MdReceipt />, path: "/dashboard/expenses" },
+  { label: "Profile", icon: <FaRegUser />, path: "/dashboard/profile" },
 
   { label: "Logout", icon: <MdLogout />, path: "/" },
 ];
@@ -44,7 +45,7 @@ const UserMenu = () => {
   const navigate = useNavigate();
 
   return (
-    <aside className="w-64 h-screen bg-yellow-100 border-r border-yellow-300 p-5 z-40">
+    <aside className="w-64 h-screen bg-yellow-100 border-r border-yellow-300 p-5  fixed">
       <h2 className="text-2xl font-bold text-yellow-900 mb-8 text-center">
         Al Sageer
       </h2>

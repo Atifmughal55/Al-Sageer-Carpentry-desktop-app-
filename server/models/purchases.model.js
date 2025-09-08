@@ -1,13 +1,14 @@
 // Create a new Purchase
 export const createPurchasesModel = (db, data) => {
   return db.run(
-    `INSERT INTO purchases (purchase_no,supplier_name,description,total_amount,paid_amount,remarks) VALUES (?,?,?,?,?,?)`,
+    `INSERT INTO purchases (purchase_no, supplier_name, description, total_amount, paid_amount, payment_status, remarks) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [
       data.purchase_no,
       data.supplier_name,
       data.description,
       data.total_amount,
       data.paid_amount,
+      data.payment_status,
       data.remarks,
     ]
   );

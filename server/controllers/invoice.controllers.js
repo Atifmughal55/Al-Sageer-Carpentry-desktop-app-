@@ -9,6 +9,7 @@ import {
   getAllInvoiceModel,
   getInvoiceByIdModel,
   getInvoiceByQuotationNoModel,
+  permanentlyDeleteInvoiceModel,
 } from "../models/invoice.model.js";
 import { createInvoiceItemModel } from "../models/invoiceItem.model.js";
 
@@ -18,11 +19,10 @@ export const getAllInvoiceController = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
-
   try {
     // Step 1: Get total count for pagination
     const totalCountResult = await db.get(
-      `SELECT COUNT(*) as total FROM invoices WHERE is_deleted = 0`
+      `SELECT COUNT(*) as total FROM invoices `
     );
     const totalCount = totalCountResult?.total || 0;
 
@@ -36,7 +36,6 @@ export const getAllInvoiceController = async (req, res) => {
       });
     }
     // Get invoices (should already filter out soft-deleted ones)
-
     // Attach customer info to each invoice
     const invoiceWithCustomer = await Promise.all(
       invoices.map(async (invoice) => {
@@ -151,11 +150,13 @@ export const getInvoiceByQuotationNoController = async (req, res) => {
 export const createInvoiceController = async (req, res) => {
   const { db } = req.app.locals;
   const invoiceData = req.body;
-
   const { name, email, phone, address } = invoiceData.customer;
+
+  console.log("Invoice Data: ", invoiceData);
   try {
     let newCustomer;
-    //check if customer exists
+
+    // Check if customer exists
     if (invoiceData.customer.id) {
       const customer = await getCustomerByIdModel(invoiceData.customer.id, db);
       if (!customer) {
@@ -166,58 +167,73 @@ export const createInvoiceController = async (req, res) => {
         });
       }
     } else {
-      // If customer ID is not provided, thats mean we need to create a new customer
+      // Create a new customer if ID not provided
       newCustomer = await createCustomerModel(db, name, email, phone, address);
     }
 
-    // Now create the new invoiceItem
+    // Create invoice items
     const invoiceItems = invoiceData.invoiceItems.map((item) => {
       const data = {
-        invoice_id: invoiceData.invoice.invoiceNo, // Assuming invoiceData has an id field
+        invoice_id: invoiceData.invoice.invoiceNo,
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unitPrice,
-        discount: item.discount,
         vat: item.vat,
       };
       return createInvoiceItemModel(db, data);
     });
-
     await Promise.all(invoiceItems);
 
+    // ==== Calculations ====
+    const total_amount = invoiceData.invoiceItems.reduce((acc, item) => {
+      const unitPrice = item.unitPrice || 0;
+      const quantity = item.quantity || 0;
+      return acc + unitPrice * quantity;
+    }, 0);
+
+    const discount = invoiceData.invoice.discount || 0;
+
+    const vat = invoiceData.invoiceItems.reduce((acc, item) => {
+      const unitPrice = item.unitPrice || 0;
+      const quantity = item.quantity || 0;
+      const vatPercent = item.vat || 0;
+      const totalPrice = unitPrice * quantity;
+      return acc + (totalPrice * vatPercent) / 100;
+    }, 0);
+
+    const received = invoiceData.invoice.receivedAmount || 0;
+
+    const remaining = total_amount + vat - discount - received;
+
+    const total_with_vat = total_amount + vat;
+
+    // ==== Invoice object ====
     const invoiceDataToCreate = {
-      invoice_no: invoiceData.invoice.invoiceNo, // Assuming invoiceData has an invoice field with invoiceNo
-      quotation_id: invoiceData.invoice.quotationNo, // Assuming invoiceData has an quotation field with quotationNo
-      customer_id: invoiceData.customer.id || newCustomer.lastID, // Assuming invoiceData has a customer field with id
+      invoice_no: invoiceData.invoice.invoiceNo,
+      quotation_id: invoiceData.invoice.quotationNo,
+      customer_id: invoiceData.customer.id || newCustomer.lastID,
       customer_trn: invoiceData.invoice.trn,
       project_name: invoiceData.invoice.projectName,
-      total_amount: invoiceData.invoice.totalAmount,
-      discount: invoiceData.invoiceItems.reduce(
-        (acc, item) =>
-          acc +
-          ((item?.discount || 0) / 100) *
-            (item?.unitPrice || 0) *
-            (item?.quantity || 0),
-        0
-      ),
-      vat: invoiceData.invoiceItems.reduce(
-        (acc, item) =>
-          acc +
-          ((item?.vat || 0) / 100) *
-            (item?.unitPrice || 0) *
-            (item?.quantity || 0)
-      ),
-      received: invoiceData.invoice.receivedAmount,
+      total_amount,
+      discount,
+      vat,
+      received,
+      remaining,
+      total_with_vat,
     };
 
     const newInvoice = await createInvoiceModel(db, invoiceDataToCreate);
 
+    console.log(
+      "New invoice: ",
+      await getInvoiceByIdModel(db, newInvoice.lastID)
+    );
     res.status(201).json({
       success: true,
       error: false,
       message: "Invoice created successfully",
       data: {
-        invoiceId: newInvoice.lastID, // Assuming createInvoiceModel returns the last inserted ID
+        invoiceId: newInvoice.lastID,
         customerId: invoiceData.customer.id || newCustomer.lastID,
       },
     });
@@ -262,6 +278,45 @@ export const deleteInvoiceController = async (req, res) => {
   }
 };
 
+//Delete invoice permanently
+export const deleteInvoicePermanently = async (req, res) => {
+  const { db } = req.app.locals;
+  const { id } = req.params;
+  try {
+    const findInvoice = await getInvoiceByIdModel(db, id);
+
+    if (!findInvoice) {
+      return res.status(404).json({
+        success: false,
+        error: true,
+        message: "Invoice not found",
+      });
+    }
+    const { invoice, customer, invoice_items } = findInvoice;
+
+    // Delete invoice items first
+    await Promise.all(
+      invoice_items.map((item) => {
+        return db.run(`DELETE FROM invoice_items WHERE invoice_id=?`, [
+          invoice.invoice_no,
+        ]);
+      })
+    );
+
+    await db.run(`DELETE FROM invoices WHERE id= ?`, [id]);
+    return res.status(201).json({
+      success: true,
+      error: false,
+      message: "Invoice Permanently Deleted.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      error: true,
+      message: "Internal server error",
+    });
+  }
+};
 // Restore an invoice
 export const restoreInvoiceController = async (req, res) => {
   const { db } = req.app.locals;
@@ -322,7 +377,7 @@ export const searchInvoiceController = async (req, res) => {
       return res.status(404).json({
         success: false,
         error: true,
-        message: "No invoices found",
+        message: "No invoice found",
       });
     }
 
@@ -333,6 +388,7 @@ export const searchInvoiceController = async (req, res) => {
       `SELECT * FROM invoice_items WHERE invoice_id = ?`,
       [invoice.invoice_no]
     );
+
     res.status(200).json({
       success: true,
       error: false,
@@ -340,7 +396,6 @@ export const searchInvoiceController = async (req, res) => {
       data: { ...invoice, customer, invoice_items },
     });
   } catch (error) {
-    console.log("Error in searchInvoiceController:", error);
     res.status(500).json({
       success: false,
       error: true,
@@ -422,15 +477,7 @@ export const updateInvoiceController = async (req, res) => {
     }
 
     // Calculations
-    const discount = items.reduce(
-      (acc, item) =>
-        acc +
-        ((item.discount || 0) / 100) *
-          (item.unit_price || 0) *
-          (item.quantity || 0),
-      0
-    );
-
+    const discount = invoice.discount || 0;
     const vat = items.reduce(
       (acc, item) =>
         acc +
@@ -438,10 +485,11 @@ export const updateInvoiceController = async (req, res) => {
       0
     );
 
-    const totalAmount = items.reduce(
-      (acc, item) => acc + (item.unit_price || 0) * (item.quantity || 0),
-      0
-    );
+    const totalAmount =
+      items.reduce(
+        (acc, item) => acc + (item.unit_price || 0) * (item.quantity || 0),
+        0
+      ) - discount;
 
     const updatedInvoice = {
       invoice_no: invoice.invoice_no,
@@ -455,6 +503,7 @@ export const updateInvoiceController = async (req, res) => {
       received: invoice.received || 0,
     };
 
+    console.log("updatedInvoice: ", updatedInvoice);
     // Update the invoice
     await db.run(
       `UPDATE invoices SET 
@@ -549,6 +598,55 @@ export const updateInvoiceController = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
+    });
+  }
+};
+
+//Sale Summary
+export const summary = async (req, res) => {
+  try {
+    const { db } = req.app.locals;
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        success: false,
+        error: true,
+        message: "Start date or end date is missing.",
+      });
+    }
+
+    // Fetch invoices within the date range
+    const sales = await db.all(
+      `SELECT total_with_vat FROM invoices WHERE DATE(created_at) BETWEEN DATE(?) AND DATE(?)`,
+      [startDate, endDate]
+    );
+
+    // Fetch all invoices to calculate lifetime total revenue
+    const allInvoices = await db.all(`SELECT total_with_vat FROM invoices`);
+
+    const totalSales =
+      sales?.reduce((sum, inv) => sum + inv.total_with_vat, 0) || 0;
+    const totalInvoices = sales?.length || 0;
+    const totalRevenue =
+      allInvoices?.reduce((sum, inv) => sum + inv.total_with_vat, 0) || 0;
+
+    return res.status(200).json({
+      success: true,
+      error: false,
+      message: "Sales summary retrieved successfully.",
+      data: {
+        totalSales,
+        totalInvoices,
+        totalRevenue,
+      },
+    });
+  } catch (error) {
+    console.error("Error in sales summary:", error);
+    return res.status(500).json({
+      success: false,
+      error: true,
+      message: "Internal server error.",
     });
   }
 };

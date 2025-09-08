@@ -25,10 +25,12 @@ const Quotations = () => {
   const [selectedQuotation, setSelectedQuotation] = useState({});
   const [openEditQuotation, setOpenEditQuotation] = useState(false);
   const [page, setPage] = useState(1);
-  const [limit] = useState(5); // You can make this dynamic too
+  const [limit] = useState(10); // You can make this dynamic too
   const [totalPages, setTotalPages] = useState(1);
   const [totalQuotations, setTotalQuotations] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [originalQuotations, setOriginalQuotations] = useState([]);
+
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -46,8 +48,9 @@ const Quotations = () => {
 
       if (responseData.success) {
         toast.success(responseData.message);
-        setAllQuotation(responseData.data);
-        setTotalPages(responseData.page);
+        setOriginalQuotations(responseData.data); // Keep original
+        setAllQuotation(responseData.data); // Show in table
+        setTotalPages(responseData.total_pages);
         setTotalQuotations(responseData.total_quotations);
       }
     } catch (error) {
@@ -127,7 +130,6 @@ const Quotations = () => {
 
   // Handle search functionality
   const handleSearch = async (quotationNo) => {
-    console.log("Searching for quotation with number:", quotationNo);
     try {
       const response = await Axios({
         ...SummaryApi.searchQuotation,
@@ -142,10 +144,11 @@ const Quotations = () => {
         setTotalPages(1); // Reset to 1 since we are showing only one result
         setTotalQuotations(1); // Set total quotations to 1
       } else {
+        console.log(responseData.message);
         toast.error(responseData.message);
       }
     } catch (error) {
-      toast.error("Something went wrong while searching");
+      toast.error(error.response.data.message);
     }
   };
 
@@ -160,16 +163,52 @@ const Quotations = () => {
       Validity: new Date(q.valid_until).toLocaleDateString(),
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    // Create worksheet from data, starting at row 3 (leave space for header)
+    const worksheet = XLSX.utils.json_to_sheet(exportData, { origin: "A3" });
+
+    // Add custom header in row 1
+    XLSX.utils.sheet_add_aoa(
+      worksheet,
+      [["Al Sageer Carpentry – Quotations"]],
+      { origin: "A1" }
+    );
+
+    // Merge header cells from A1 to G1 (since there are 7 columns)
+    worksheet["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } }, // A1 to G1
+    ];
+
+    // Optional: Column width adjustments
+    worksheet["!cols"] = [
+      { wch: 5 }, // #
+      { wch: 20 }, // Customer Name
+      { wch: 18 }, // Customer Contact
+      { wch: 25 }, // Project Name
+      { wch: 18 }, // Quotation No
+      { wch: 12 }, // Status
+      { wch: 15 }, // Validity
+    ];
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Quotations");
+
+    // Auto-generated file name with readable timestamp
+    const now = new Date();
+    const fileName = `Quotations_${now
+      .toISOString()
+      .slice(0, 19)
+      .replace(/[-:T]/g, "_")}.xlsx`;
 
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
       type: "array",
     });
-    const data = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(data, `quotations_${Date.now()}.xlsx`);
+
+    const data = new Blob([excelBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    saveAs(data, fileName);
   };
   useEffect(() => {
     fetchQuotations();
@@ -184,9 +223,14 @@ const Quotations = () => {
             className="border px-3 py-2 rounded-md"
             onChange={(e) => {
               const value = e.target.value;
-              if (value === "") return fetchQuotations();
-              const filtered = allQuotations.filter((q) => q.status === value);
-              setAllQuotation(filtered);
+              if (value === "") {
+                setAllQuotation(originalQuotations);
+              } else {
+                const filtered = originalQuotations.filter(
+                  (q) => q.status === value
+                );
+                setAllQuotation(filtered);
+              }
             }}
           >
             <option value="">Filter by Status</option>
@@ -238,7 +282,7 @@ const Quotations = () => {
                 }
               }, 1000);
             }}
-            placeholder="Search here..."
+            placeholder="Search quotation. QT1234"
             className="px-4 py-2 rounded-md border border-yellow-300 bg-white text-yellow-900 placeholder-yellow-400 shadow-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-500"
           />
 
@@ -259,10 +303,10 @@ const Quotations = () => {
           <thead className="bg-yellow-200 text-yellow-900 text-sm font-semibold">
             <tr>
               <th className="py-3 px-4 text-left">#</th>
+              <th className="py-3 px-4 text-left">Quotation No</th>
               <th className="py-3 px-4 text-left">Customer Name</th>
               <th className="py-3 px-4 text-left">Customer Contact</th>
               <th className="py-3 px-4 text-left">Project Name</th>
-              <th className="py-3 px-4 text-left">Quotation No</th>
               <th className="py-3 px-4 text-left">Status</th>
               <th className="py-3 px-4 text-left">Validity</th>
               <th className="py-3 px-4 text-left">Actions</th>
@@ -287,10 +331,10 @@ const Quotations = () => {
                     } border-b border-yellow-200 transition duration-200 hover:bg-yellow-100`}
                   >
                     <td className="py-3 px-4">{index + 1}</td>
+                    <td className="py-3 px-4">{q.quotation_no}</td>
                     <td className="py-3 px-4">{q.customer?.name}</td>
                     <td className="py-3 px-4">{q.customer?.phone}</td>
                     <td className="py-3 px-4">{q.project_name}</td>
-                    <td className="py-3 px-4">{q.quotation_no}</td>
                     <td className="py-3 px-4">
                       <select
                         className="border p-2 rounded-md"
@@ -371,32 +415,32 @@ const Quotations = () => {
           cancel={() => setOpenEditQuotation(false)}
         />
       )}
+      <div className="flex justify-between mt-6 items-center">
+        <button
+          onClick={exportToExcel}
+          disabled={allQuotations.length === 0}
+          className="flex items-center gap-2 mt-3 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-md shadow transition duration-200"
+        >
+          Export Excel
+        </button>
 
-      <button
-        onClick={exportToExcel}
-        className="flex items-center gap-2 mt-3 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-md shadow transition duration-200"
-      >
-        Export Excel
-      </button>
+        {/* Pagination Controls */}
 
-      {/* Pagination Controls */}
-      <div className="flex justify-between items-center mt-6 ">
         <div className="text-sm text-gray-600">
           Page <span className="font-semibold text-yellow-700">{page}</span> of{" "}
           <span className="font-semibold text-yellow-700">{totalPages}</span> —{" "}
           <span className="text-gray-700">{totalQuotations} Quotations</span>
         </div>
-
-        <div className="flex gap-3 sticky bottom-0 right-0 z-40">
+        <div className="flex gap-3 sticky bottom-0 right-0 ">
           <button
             onClick={() => setPage((prev) => prev - 1)}
             disabled={page <= 1}
             className={`w-10 h-10 flex items-center justify-center rounded-full border transition 
-        ${
-          page <= 1
-            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-            : "bg-yellow-500 text-white hover:bg-yellow-600"
-        }`}
+              ${
+                page <= 1
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-yellow-500 text-white hover:bg-yellow-600"
+              }`}
           >
             <MdChevronLeft className="text-xl" />
           </button>
@@ -405,11 +449,11 @@ const Quotations = () => {
             onClick={() => setPage((prev) => prev + 1)}
             disabled={page >= totalPages}
             className={`w-10 h-10 flex items-center justify-center rounded-full border transition 
-        ${
-          page >= totalPages
-            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-            : "bg-yellow-500 text-white hover:bg-yellow-600"
-        }`}
+              ${
+                page >= totalPages
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-yellow-500 text-white hover:bg-yellow-600"
+              }`}
           >
             <MdChevronRight className="text-xl" />
           </button>

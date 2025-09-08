@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Axios from "../utils/Axios";
 import SummaryApi from "../common/SummaryApi";
@@ -20,7 +20,8 @@ const CreateQuotation = () => {
     },
     items: [{ description: "", size: "", quantity: 1, unit_price: 0 }],
   });
-
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [customerFound, setCustomerFound] = useState(false);
   const handleChange = (e) => {
     const { name, value } = e.target;
     const [section, key] = name.split(".");
@@ -80,7 +81,71 @@ const CreateQuotation = () => {
     (acc, item) => acc + item.quantity * item.unit_price,
     0
   );
+  const isFormValid = () => {
+    const { customer, quotation, items } = formData;
 
+    // Check customer fields
+    const customerValid = Object.values(customer).every(
+      (val) => val.trim() !== ""
+    );
+
+    // Check project name
+    const projectValid = quotation.project_name.trim() !== "";
+
+    // Check items
+    const itemsValid = items.every(
+      (item) =>
+        item.description.trim() !== "" &&
+        item.size.trim() !== "" &&
+        Number(item.quantity) > 0 &&
+        Number(item.unit_price) > 0
+    );
+
+    return customerValid && projectValid && itemsValid;
+  };
+
+  const fetchCustomer = async (phone) => {
+    try {
+      const response = await Axios({
+        ...SummaryApi.searchCustomer,
+        params: { phone },
+      });
+
+      const { data: responseData } = response;
+
+      if (responseData.success) {
+        toast.success(responseData.message);
+        setCustomerFound(true);
+        const customerData = responseData.data;
+
+        // Autofill customer data into form
+        if (customerData) {
+          setFormData((prev) => ({
+            ...prev,
+            customer: {
+              name: customerData.name || "",
+              email: customerData.email || "",
+              phone: customerData.phone || "",
+              address: customerData.address || "",
+            },
+          }));
+        }
+      }
+    } catch (error) {
+      toast.error("Customer not found.");
+      setCustomerFound(false);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (customerPhone) {
+        fetchCustomer(customerPhone);
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [customerPhone]);
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold text-center mb-8 text-blue-800">
@@ -89,9 +154,18 @@ const CreateQuotation = () => {
 
       {/* Customer Info */}
       <div className="bg-white shadow rounded-lg p-6 mb-6 border">
-        <h2 className="text-xl font-semibold mb-4 text-gray-700">
-          Customer Info
-        </h2>
+        <div className="flex justify-between items-start">
+          <h2 className="text-xl font-semibold mb-4 text-gray-700">
+            Customer Info
+          </h2>
+
+          <input
+            type="text"
+            placeholder="Search By phone number."
+            onChange={(e) => setCustomerPhone(e.target.value)}
+            className="border px-4 py-2 rounded-md border-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400  "
+          />
+        </div>
         <div className="grid md:grid-cols-2 gap-4">
           {["name", "email", "phone", "address"].map((field) => (
             <div key={field}>
@@ -100,6 +174,7 @@ const CreateQuotation = () => {
               </label>
               <input
                 type="text"
+                disabled={customerFound}
                 name={`customer.${field}`}
                 value={formData.customer[field]}
                 onChange={handleChange}
@@ -153,31 +228,46 @@ const CreateQuotation = () => {
                 handleItemChange(index, "description", e.target.value)
               }
             />
-            <input
-              type="text"
-              className="px-3 py-2 border rounded-md"
-              placeholder="Size"
-              value={item.size}
-              onChange={(e) => handleItemChange(index, "size", e.target.value)}
-            />
-            <input
-              type="number"
-              className="px-3 py-2 border rounded-md"
-              placeholder="Qty"
-              value={item.quantity}
-              onChange={(e) =>
-                handleItemChange(index, "quantity", e.target.value)
-              }
-            />
-            <input
-              type="number"
-              className="px-3 py-2 border rounded-md"
-              placeholder="Unit Price"
-              value={item.unit_price}
-              onChange={(e) =>
-                handleItemChange(index, "unit_price", e.target.value)
-              }
-            />
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Size</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-md"
+                placeholder="e.g. 4ft x 6ft"
+                value={item.size}
+                onChange={(e) =>
+                  handleItemChange(index, "size", e.target.value)
+                }
+              />
+            </div>
+
+            {/* Quantity */}
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">Qty</label>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border rounded-md"
+                value={item.quantity}
+                onChange={(e) =>
+                  handleItemChange(index, "quantity", e.target.value)
+                }
+              />
+            </div>
+
+            {/* Unit Price */}
+            <div>
+              <label className="block text-sm text-gray-600 mb-1">
+                Unit Price (AED)
+              </label>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border rounded-md"
+                value={item.unit_price}
+                onChange={(e) =>
+                  handleItemChange(index, "unit_price", e.target.value)
+                }
+              />
+            </div>
             {formData.items.length > 1 && (
               <button
                 onClick={() => removeItem(index)}
@@ -207,7 +297,8 @@ const CreateQuotation = () => {
       <div className="flex justify-end gap-4">
         <button
           onClick={handleSubmit}
-          className="flex items-center bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-md shadow"
+          className="flex items-center bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-md shadow disabled:bg-gray-400 disabled:cursor-not-allowed"
+          disabled={!isFormValid()}
         >
           <FaCheck className="mr-2" />
           Submit Quotation

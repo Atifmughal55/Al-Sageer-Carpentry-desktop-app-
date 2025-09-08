@@ -68,7 +68,10 @@ const SummaryApi = {
     url: "/api/invoices",
     method: "delete",
   },
-
+  deletePermanently: {
+    url: "/api/invoices/remove-invoice",
+    method: "delete",
+  },
   createInvoice: {
     url: "/api/invoices",
     method: "post",
@@ -109,6 +112,54 @@ const SummaryApi = {
   },
   editPurchase: {
     url: "/api/purchases",
+    method: "put",
+  },
+  searchPurchase: {
+    url: "/api/purchases/search",
+    method: "get",
+  },
+  permanentlyDeletePurchase: {
+    url: "/api/purchases/delete",
+    method: "delete",
+  },
+
+  //Authentication
+  login: {
+    url: "/api/user/login",
+    method: "post",
+  },
+  forgotPassword: {
+    url: "/api/user/forgot-password",
+    method: "post",
+  },
+  recoverPassword: {
+    url: "api/user/recover-password",
+    method: "post",
+  },
+  changePassword: {
+    url: "api/user/change-password",
+    method: "put",
+  },
+  saleSummary: {
+    url: "api/invoices/sale-summary",
+    method: "get",
+  },
+
+  //walk In Customer
+  getAllWalkInCustomers: {
+    url: "api/walk-in",
+    method: "get",
+  },
+  createWalkInCustomer: {
+    url: "api/walk-in",
+    method: "post",
+  },
+  deleteWalkInCustomer: {
+    url: "api/walk-in",
+    method: "delete",
+  },
+  updateWalkInCustomer: {
+    url: "api/walk-in",
     method: "put",
   },
 };

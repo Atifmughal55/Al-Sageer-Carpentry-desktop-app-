@@ -29,7 +29,7 @@ const CreatePurchaseModal = ({ close, setNewPurchase }) => {
     const balance = total - paid;
 
     let status = "Unpaid";
-    if (balance === 0 && total !== 0) status = "Paid";
+    if (balance <= 0 && total !== 0) status = "Paid";
     else if (balance > 0 && paid > 0) status = "Partial";
 
     setFormData((prev) => ({
@@ -58,7 +58,7 @@ const CreatePurchaseModal = ({ close, setNewPurchase }) => {
       newErrors.paid_amount = "Paid amount is required.";
     if (!formData.description.trim())
       newErrors.description = "Description is required.";
-
+    if (!formData.remarks) newErrors.remarks = "Remark is required.";
     return newErrors;
   };
 
@@ -194,7 +194,7 @@ const CreatePurchaseModal = ({ close, setNewPurchase }) => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Remarks
+              Remarks <span className="text-red-500">*</span>
             </label>
             <textarea
               name="remarks"
@@ -204,6 +204,9 @@ const CreatePurchaseModal = ({ close, setNewPurchase }) => {
               placeholder="Any additional comments..."
               className="w-full border px-4 py-2 rounded"
             ></textarea>
+            {errors.remarks && (
+              <p className="text-red-500 text-sm mt-1">{errors.remarks}</p>
+            )}
           </div>
 
           <div className="flex justify-end mt-4 gap-4">

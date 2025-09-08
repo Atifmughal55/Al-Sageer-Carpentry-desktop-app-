@@ -19,10 +19,6 @@ export const getAllQuotationItems = async (req, res) => {
       data: quotationItems,
     });
   } catch (error) {
-    console.log(
-      "Error while fetching qoutation items: ",
-      error || error.message
-    );
     return res.status(500).json({
       success: false,
       error: true,
@@ -52,7 +48,6 @@ export const getQuotationItem = async (req, res) => {
       data: quotaionItem,
     });
   } catch (error) {
-    console.log("Error while fetching quotaion item: ", error || error.message);
     return res.status(500).json({
       success: false,
       error: true,
@@ -95,10 +90,6 @@ export const createQuotaitonItem = async (req, res) => {
       data: insertedQuotationItem,
     });
   } catch (error) {
-    console.log(
-      "Error while creating quotation item: ",
-      error || error.message
-    );
     return res.status(500).json({
       success: false,
       error: true,
@@ -155,10 +146,6 @@ export const updateQuotationItem = async (req, res) => {
       data: updatedItem,
     });
   } catch (error) {
-    console.log(
-      "Error while updating quotation item: ",
-      error || error.message
-    );
     return res.status(500).json({
       success: false,
       error: true,
@@ -188,7 +175,6 @@ export const deleteQuotationItem = async (req, res) => {
       message: "Quotation item deleted.",
     });
   } catch (error) {
-    console.log("Error while deleting quotation item,", error || error.message);
     return res.status(500).json({
       success: false,
       error: true,
@@ -221,7 +207,6 @@ export const getAllQuotationsWithQuotNo = async (req, res) => {
       data: quotation_Items,
     });
   } catch (error) {
-    console.log("Error while getting quotations: ", error || error.message);
     return res.status(500).json({
       success: false,
       error: true,

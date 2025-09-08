@@ -1,6 +1,10 @@
 //Get all invoices with pagination
 export const getAllInvoiceModel = (db, limit, offset) => {
-  return db.all(`SELECT * FROM invoices LIMIT ? OFFSET ?`, [limit, offset]);
+  return db.all(
+    `SELECT * FROM invoices order by created_at
+ desc LIMIT ? OFFSET ?`,
+    [limit, offset]
+  );
 };
 
 // Get invoice by ID
@@ -18,7 +22,7 @@ export const getInvoiceByIdModel = async (db, id) => {
   // Get invoice_items against this invoice
   const invoice_items = await db.all(
     `SELECT * FROM invoice_items WHERE invoice_id = ? `,
-    [id]
+    [invoice.invoice_no]
   );
 
   return { invoice, customer, invoice_items };
@@ -59,10 +63,13 @@ export const createInvoiceModel = async (db, invoiceData) => {
     project_name,
     total_amount,
     discount,
+    vat,
     received,
+    remaining,
+    total_with_vat,
   } = invoiceData;
   return db.run(
-    `INSERT INTO invoices ( invoice_no,quotation_id,customer_id,customer_trn,project_name,total_amount,discount,received ) VALUES (?, ?, ?, ?,?,?,?,?)`,
+    `INSERT INTO invoices ( invoice_no,quotation_id,customer_id,customer_trn,project_name,total_amount,discount,vat, received,remaining,total_with_vat ) VALUES (?, ?, ?, ?,?,?,?,?,?,?,?)`,
     [
       invoice_no,
       quotation_id,
@@ -71,7 +78,10 @@ export const createInvoiceModel = async (db, invoiceData) => {
       project_name,
       total_amount,
       discount,
+      vat,
       received,
+      remaining,
+      total_with_vat,
     ]
   );
 };
@@ -80,4 +90,9 @@ export const createInvoiceModel = async (db, invoiceData) => {
 export const deleteInvoiceModel = async (db, id) => {
   //Soft delete invoice by setting is_deleted to 1
   return db.run(`UPDATE invoices SET is_deleted = 1 WHERE id = ?`, [id]);
+};
+
+//Permanently delete invoice
+export const permanentlyDeleteInvoiceModel = async (db, id) => {
+  return db.run(`DELETE FROM invoices WHERE id = ?`, [id]);
 };

@@ -5,20 +5,22 @@ import Axios from "../utils/Axios";
 import SummaryApi from "../common/SummaryApi";
 
 const generateInvoiceNo = () => `SC${Math.floor(1000 + Math.random() * 9000)}`;
-const generateTRN = () =>
-  Math.floor(1000000000000 + Math.random() * 9000000000000);
+// const generateTRN = () =>
+//   Math.floor(1000000000000 + Math.random() * 9000000000000);
 
 const Invoice = () => {
   const [customerData, setCustomerData] = useState({});
   const [invoiceNo] = useState(generateInvoiceNo());
-  const [trn] = useState(generateTRN());
+  const [trn, setTrn] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [projectName, setProjectName] = useState("");
   const [quotationID, setQuotationID] = useState("");
+  const [quotationDate, setQuotationDate] = useState("");
   const [vatPer, setVatPer] = useState(5); // Default VAT is 5%
   const [items, setItems] = useState([
     { description: "", quantity: 1, unitPrice: 0, vat: 5, discount: 0 },
   ]);
+  const [discountAmount, setDiscountAmount] = useState(0);
   const [receivedAmount, setReceivedAmount] = useState(0);
   const navigate = useNavigate();
   const { quotation_no } = useParams();
@@ -43,8 +45,11 @@ const Invoice = () => {
       setCustomerName(res?.data?.customer?.name);
       setProjectName(res.data?.project_name);
       setQuotationID(res?.data?.id);
+      setQuotationDate(res?.data?.created_at);
     } catch {
-      toast.error("Failed to fetch quotation data");
+      if (quotation_no !== "0000") {
+        toast.error("Failed to fetch quotation data");
+      }
     }
   };
 
@@ -60,7 +65,6 @@ const Invoice = () => {
           description: item.description || "",
           quantity: item.quantity || 1,
           unitPrice: item.unit_price || 0,
-          discount: item.discount || 0,
           vat: vatPer,
         }));
         setItems(fetchedItems);
@@ -74,9 +78,7 @@ const Invoice = () => {
 
   const handleItemChange = (index, field, value) => {
     const updatedItems = [...items];
-    updatedItems[index][field] = ["quantity", "unitPrice", "discount"].includes(
-      field
-    )
+    updatedItems[index][field] = ["quantity", "unitPrice"].includes(field)
       ? Number(value)
       : value;
     setItems(updatedItems);
@@ -85,7 +87,7 @@ const Invoice = () => {
   const addItem = () => {
     setItems([
       ...items,
-      { description: "", quantity: 1, unitPrice: 0, vat: vatPer, discount: 0 },
+      { description: "", quantity: 1, unitPrice: 0, vat: vatPer },
     ]);
   };
 
@@ -95,34 +97,28 @@ const Invoice = () => {
 
   const getItemCalculations = (item) => {
     const baseAmount = item.unitPrice * item.quantity;
-    const discountPerUnit = (item.unitPrice * item.discount) / 100;
-    const netUnitPrice = item.unitPrice - discountPerUnit;
-    const discountAmount = discountPerUnit * item.quantity;
-    const netAmount = netUnitPrice * item.quantity;
     const vatRate = item.vat / 100;
-    const vatAmount = netAmount * vatRate;
-    const total = netAmount + vatAmount;
-    return { baseAmount, discountAmount, netAmount, vatAmount, total };
+    const vatAmount = baseAmount * vatRate;
+    const total = baseAmount + vatAmount;
+    return { baseAmount, vatAmount, total };
   };
 
   const totals = items.reduce(
     (acc, item) => {
       const calc = getItemCalculations(item);
       acc.base += calc.baseAmount;
-      acc.discount += calc.discountAmount;
-      acc.net += calc.netAmount;
       acc.vat += calc.vatAmount;
       acc.total += calc.total;
       return acc;
     },
-    { base: 0, discount: 0, net: 0, vat: 0, total: 0 }
+    { base: 0, vat: 0, total: 0 }
   );
 
   const balance =
     receivedAmount >= totals.total
       ? 0
-      : (totals.total - receivedAmount).toFixed(2);
-
+      : (totals.total - receivedAmount - discountAmount).toFixed(2);
+  console.log(balance);
   const handleVatChange = (value) => {
     const newVat = Number(value);
     setVatPer(newVat);
@@ -147,12 +143,14 @@ const Invoice = () => {
         invoiceNo,
         trn,
         date: new Date().toLocaleDateString(),
+        quotationDate: quotationDate,
         projectName,
         quotationNo: quotation_no,
         receivedAmount,
         vatPercentage: vatPer,
-        totalAmount: totals.total,
-        remainingBalance: balance,
+        discount: discountAmount,
+        totalAmount: totals.total - discountAmount,
+        remaining: balance,
       },
       invoiceItems: items.map((item) => {
         const { vatAmount, total } = getItemCalculations(item);
@@ -161,7 +159,6 @@ const Invoice = () => {
           description: item.description,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
-          discount: item.discount,
           vat: item.vat,
           vatAmount,
           total,
@@ -170,8 +167,11 @@ const Invoice = () => {
     };
 
     try {
-      const response = await Axios.post(SummaryApi.createInvoice.url, data);
-
+      const response = await Axios({
+        ...SummaryApi.createInvoice,
+        data,
+      });
+      console.log("data: ", data);
       toast.success("Invoice created successfully!");
 
       const createdInvoice = response.data?.data;
@@ -181,29 +181,48 @@ const Invoice = () => {
       setProjectName("");
       setQuotationID("");
       setVatPer(5);
-      setItems([
-        { description: "", quantity: 1, unitPrice: 0, vat: 5, discount: 0 },
-      ]);
+      setItems([{ description: "", quantity: 1, unitPrice: 0, vat: 5 }]);
       setReceivedAmount(0);
-
       // Navigate to print page with invoice details
-      navigate(
-        `/dashboard/invoice-print/${createdInvoice?.invoice?.invoice_no}`,
-        {
-          state: {
-            ...data.invoice,
-            customerName: data.customer.name,
-            items: data.invoiceItems,
-            totals,
-            balance,
-            receivedAmount,
-          },
-        }
-      );
+      navigate(`/dashboard/invoice-print/${createdInvoice?.invoiceId}`, {
+        state: {
+          ...data.invoice,
+          customerName: data.customer.name,
+          items: data.invoiceItems,
+          totals,
+          balance,
+          receivedAmount,
+        },
+      });
     } catch (error) {
-      console.error("Invoice creation failed:", error);
       toast.error("Failed to create invoice");
     }
+  };
+
+  const isFormValid = () => {
+    const requiredCustomerFields = [
+      customerName,
+      customerData.email,
+      customerData.phone,
+      customerData.address,
+      projectName,
+      trn, // include this if TRN is mandatory
+    ];
+
+    const areCustomerFieldsFilled = requiredCustomerFields.every(
+      (field) => field && field.toString().trim() !== ""
+    );
+
+    const areItemsValid =
+      items.length > 0 &&
+      items.every(
+        (item) =>
+          item.description.trim() !== "" &&
+          Number(item.quantity) > 0 &&
+          Number(item.unitPrice) >= 0
+      );
+
+    return areCustomerFieldsFilled && areItemsValid;
   };
 
   return (
@@ -216,13 +235,10 @@ const Invoice = () => {
           <strong>Invoice No:</strong> {invoiceNo}
         </div>
         <div>
-          <strong>TRN:</strong> {trn}
-        </div>
-        <div>
           <strong>Quotation No:</strong> {quotation_no}
         </div>
         <div>
-          <strong>Date:</strong> {new Date().toLocaleDateString()}
+          <strong>Date:</strong> {new Date().toLocaleDateString("en-GB")}
         </div>
       </div>
 
@@ -240,6 +256,17 @@ const Invoice = () => {
             onChange={(e) => {
               setCustomerName(e.target.value);
               setCustomerData((prev) => ({ ...prev, name: e.target.value }));
+            }}
+          />
+        </div>
+        <div>
+          <label className="block mb-1 text-sm font-medium">Customer TRN</label>
+          <input
+            type="text"
+            className="w-full px-4 py-2 border rounded-md"
+            value={trn}
+            onChange={(e) => {
+              setTrn(e.target.value);
             }}
           />
         </div>
@@ -353,21 +380,7 @@ const Invoice = () => {
                     }
                   />
                 </div>
-                <div>
-                  <label className="block mb-1 text-sm font-medium">
-                    Discount (%)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    className="w-full px-4 py-2 border rounded-md"
-                    value={item.discount}
-                    onChange={(e) =>
-                      handleItemChange(index, "discount", e.target.value)
-                    }
-                  />
-                </div>
+
                 <div>
                   <label className="block mb-1 text-sm font-medium">
                     VAT (AED)
@@ -376,10 +389,17 @@ const Invoice = () => {
                     {calc.vatAmount.toFixed(2)} AED
                   </div>
                 </div>
-
                 <div>
                   <label className="block mb-1 text-sm font-medium">
                     Total (AED)
+                  </label>
+                  <div className="px-4 py-2 border rounded-md bg-gray-100 text-sm font-semibold">
+                    {calc.baseAmount.toFixed(2)} AED
+                  </div>
+                </div>
+                <div>
+                  <label className="block mb-1 text-sm font-medium">
+                    Total with Vat(AED)
                   </label>
                   <div className="px-4 py-2 border rounded-md bg-gray-100 text-sm font-semibold">
                     {calc.total.toFixed(2)} AED
@@ -409,16 +429,24 @@ const Invoice = () => {
 
       {/* Totals */}
       <div className="mt-6 text-right space-y-1 text-sm">
+        Discount:
+        <input
+          type="number"
+          name="discount"
+          placeholder="Enter Discount Amount"
+          value={discountAmount}
+          onChange={(e) => setDiscountAmount(e.target.value)}
+          className="py-1 px-2 text-md border rounded-md"
+        />
         <div>Total Amount: {totals.base.toFixed(2)} AED</div>
-        <div>Discount: {totals.discount.toFixed(2)} AED</div>
+        <div>Discount: {discountAmount} AED</div>
         <div>
           VAT ({vatPer}%): {totals.vat.toFixed(2)} AED
         </div>
         <div className="font-bold text-lg">
-          Net Payable: {totals.total.toFixed(2)} AED
+          Net Payable: {(totals.total - discountAmount).toFixed(2)} AED
         </div>
-
-        <div className="mt-4">
+        <div className="mt-4 text-green-600">
           <label className="block text-sm font-medium">Received Amount</label>
           <input
             type="number"
@@ -427,9 +455,8 @@ const Invoice = () => {
             onChange={(e) => setReceivedAmount(Number(e.target.value))}
           />
         </div>
-
         {receivedAmount < totals.total && (
-          <div className="text-red-600 font-semibold">
+          <div className="text-red-400 font-semibold">
             Remaining Balance: {balance} AED
           </div>
         )}
@@ -438,10 +465,16 @@ const Invoice = () => {
       {/* {items.length > 0 && ( */}
       <button
         onClick={handleCreateInvoice}
-        className="mt-6 px-6 py-2 bg-green-600 text-white rounded-md"
+        disabled={!isFormValid()}
+        className={`mt-6 px-6 py-2 rounded-md text-white ${
+          isFormValid()
+            ? "bg-green-600 hover:bg-green-700"
+            : "bg-gray-400 cursor-not-allowed"
+        }`}
       >
         Generate Invoice
       </button>
+
       {/* )} */}
     </div>
   );

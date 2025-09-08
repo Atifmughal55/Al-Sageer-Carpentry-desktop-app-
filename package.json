@@ -14,5 +14,8 @@
   "devDependencies": {
     "concurrently": "^9.1.2",
     "electron": "^36.4.0"
+  },
+  "dependencies": {
+    "electron-store": "^10.1.0"
   }
 }
