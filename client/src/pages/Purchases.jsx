@@ -250,7 +250,7 @@ const Purchases = () => {
               filteredPurchase.map((p, index) => (
                 <tr
                   key={p.id}
-                  className="border-t border-yellow-100 hover:bg-yellow-50"
+                  className="border-t border-yellow-100 text-center hover:bg-yellow-50"
                 >
                   <td className="py-1 px-2">{index + 1}</td>
                   <td className="py-1 px-2">{p.purchase_no}</td>

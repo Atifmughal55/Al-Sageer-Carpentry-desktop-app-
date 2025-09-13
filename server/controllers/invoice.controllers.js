@@ -152,7 +152,6 @@ export const createInvoiceController = async (req, res) => {
   const invoiceData = req.body;
   const { name, email, phone, address } = invoiceData.customer;
 
-  console.log("Invoice Data: ", invoiceData);
   try {
     let newCustomer;
 
