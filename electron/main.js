@@ -1,70 +1,7 @@
-// import { app, BrowserWindow, ipcMain, screen } from "electron";
-// import path from "path";
-// import fs from "fs";
-// import { fileURLToPath } from "url";
-// import { dirname } from "path";
-
-// // Get __dirname equivalent for ES modules
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = dirname(__filename);
-
-// let mainWindow;
-
-// function createWindow() {
-//   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-//   mainWindow = new BrowserWindow({
-//     width,
-//     height,
-//     webPreferences: {
-//       preload: path.join(__dirname, "preload.js"),
-//       contextIsolation: true,
-//       nodeIntegration: false,
-//     },
-//   });
-
-//   mainWindow.loadURL("http://localhost:5173"); // Or your React build path
-// }
-
-// // Save invoice PDF to Downloads/invoices/
-// ipcMain.handle("print-to-pdf", async (event, invoiceNo) => {
-//   try {
-//     const win = BrowserWindow.getFocusedWindow();
-
-//     const pdfData = await win.webContents.printToPDF({
-//       printBackground: true,
-//       landscape: false,
-//       marginsType: 1,
-//     });
-
-//     const downloadsPath = app.getPath("downloads");
-//     const invoicesDir = path.join(downloadsPath, "invoices");
-//     if (!fs.existsSync(invoicesDir)) {
-//       fs.mkdirSync(invoicesDir, { recursive: true });
-//     }
-
-//     const now = new Date();
-//     const formattedDate = `${String(now.getDate()).padStart(2, "0")}-${String(
-//       now.getMonth() + 1
-//     ).padStart(2, "0")}-${now.getFullYear()}`;
-
-//     const fileName = `Invoice-${invoiceNo}-${formattedDate}.pdf`;
-//     const filePath = path.join(invoicesDir, fileName);
-
-//     fs.writeFileSync(filePath, pdfData);
-
-//     return { success: true, filePath };
-//   } catch (error) {
-//     console.error("Failed to save PDF:", error);
-//     return { success: false, error: error.message };
-//   }
-// });
-
-// app.whenReady().then(createWindow);
-import { app, BrowserWindow, ipcMain, screen } from "electron";
-import path from "path";
-import fs from "fs";
+import { app, BrowserWindow, screen } from "electron";
+import path, { dirname } from "path";
 import { fileURLToPath } from "url";
-import { dirname } from "path";
+import { spawn } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -72,15 +9,44 @@ const __dirname = dirname(__filename);
 let mainWindow;
 let splashWindow;
 
+// ✅ Icon path helper
+function getIconPath() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, "assets", "icons", "al-sageer.ico")
+    : path.join(__dirname, "assets/icons/al-sageer.ico");
+}
+
+// ✅ Start backend server
+function startServer() {
+  const serverPath = app.isPackaged
+    ? path.join(process.resourcesPath, "server", "index.js") // exe mode
+    : path.join(__dirname, "../server/index.js"); // dev mode
+
+  console.log("Server path:", serverPath);
+
+  return new Promise((resolve, reject) => {
+    try {
+      const server = spawn("node", [serverPath]); // 🚀 FIXED: no detached, no stdio
+      server.on("error", (err) => reject(err));
+
+      // wait a bit to ensure server starts
+      setTimeout(() => resolve(), 2000);
+    } catch (err) {
+      console.error("Server failed to start:", err);
+      reject(err);
+    }
+  });
+}
+
+// ✅ Create splash + main window
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
-  // Splash screen
   splashWindow = new BrowserWindow({
     width,
     height,
     frame: false,
-    alwaysOnTop: true,
+    icon: getIconPath(),
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -89,19 +55,20 @@ function createWindow() {
 
   splashWindow.loadFile(path.join(__dirname, "splash.html"));
 
-  // Simulate progress (you can use real loading later)
   let progress = 0;
   const interval = setInterval(() => {
     progress += 5;
     splashWindow.webContents.send("update-progress", progress);
+
     if (progress >= 100) {
       clearInterval(interval);
 
-      // Main window
       mainWindow = new BrowserWindow({
         width,
         height,
         show: false,
+        icon: getIconPath(),
+        autoHideMenuBar: true,
         webPreferences: {
           preload: path.join(__dirname, "preload.js"),
           contextIsolation: true,
@@ -109,14 +76,36 @@ function createWindow() {
         },
       });
 
-      mainWindow.loadURL("http://localhost:5173");
+      // ✅ Frontend URL
+      const frontendURL = app.isPackaged
+        ? `file://${path.join(
+            process.resourcesPath,
+            "client",
+            "dist",
+            "index.html"
+          )}`
+        : "http://localhost:5173";
+
+      console.log("Loading frontend from:", frontendURL);
+      mainWindow.loadURL(frontendURL);
 
       mainWindow.webContents.once("did-finish-load", () => {
         splashWindow.close();
         mainWindow.show();
       });
     }
-  }, 100); // ~2 seconds to reach 100%
+  }, 100); // ~2 seconds
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+  await startServer();
+  createWindow();
+});
+
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});
+
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});

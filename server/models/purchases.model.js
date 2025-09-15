@@ -26,7 +26,7 @@ export const getPurchaseByIDModel = (db, id) => {
 
 // delete purchase
 export const deletePurchaseModel = (db, id) => {
-  return db.run(`UPDATE purchases SET is_deleted = 1 WHERE id = ?`, [id]);
+  return db.run(`DELETE FROM purchases WHERE id = ?`, [id]);
 };
 
 //Update purchase

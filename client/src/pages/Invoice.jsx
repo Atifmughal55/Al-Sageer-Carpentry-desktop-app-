@@ -118,7 +118,7 @@ const Invoice = () => {
     receivedAmount >= totals.total
       ? 0
       : (totals.total - receivedAmount - discountAmount).toFixed(2);
-  console.log(balance);
+
   const handleVatChange = (value) => {
     const newVat = Number(value);
     setVatPer(newVat);
@@ -171,7 +171,7 @@ const Invoice = () => {
         ...SummaryApi.createInvoice,
         data,
       });
-      console.log("data: ", data);
+
       toast.success("Invoice created successfully!");
 
       const createdInvoice = response.data?.data;

@@ -1,5 +1,5 @@
-import { contextBridge, ipcRenderer } from "electron";
-import Store from "electron-store";
+const { contextBridge, ipcRenderer } = require("electron");
+const Store = require("electron-store");
 
 // Initialize secure persistent store
 const store = new Store();

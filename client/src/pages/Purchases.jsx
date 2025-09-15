@@ -147,7 +147,6 @@ const Purchases = () => {
     }
   };
   const handleUpdatePurchase = async (updatedData) => {
-    console.log("updateData: ", updatedData);
     const response = await Axios({
       ...SummaryApi.editPurchase,
       url: `${SummaryApi.editPurchase.url}/${updatedData.id}`,

@@ -144,7 +144,6 @@ const Quotations = () => {
         setTotalPages(1); // Reset to 1 since we are showing only one result
         setTotalQuotations(1); // Set total quotations to 1
       } else {
-        console.log(responseData.message);
         toast.error(responseData.message);
       }
     } catch (error) {
