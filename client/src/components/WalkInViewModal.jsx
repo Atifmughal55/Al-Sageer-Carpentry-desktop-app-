@@ -96,20 +96,16 @@ const WalkInViewModal = ({ open, onClose, data }) => {
                 <span className="text-gray-600">Discount:</span>
                 <span className="font-medium">{data?.discount}</span>
               </div>
-              <div className="flex justify-between font-semibold text-sm py-1">
-                <span className="text-blue-600">After Discount:</span>
-                <span className="font-medium text-blue-600">
-                  {data?.after_discount}
-                </span>
+              <div className="flex justify-between text-sm py-1">
+                <span className="text-gray-600">After Discount:</span>
+                <span className="font-medium">{data?.after_discount}</span>
               </div>
-              <div className="flex justify-between text-sm font-semibold py-1">
-                <span className="text-green-600">Received:</span>
-                <span className="font-medium text-green-600">
-                  {data?.received}
-                </span>
+              <div className="flex justify-between text-sm py-1">
+                <span className="text-gray-600">Received:</span>
+                <span className="font-medium">{data?.received}</span>
               </div>
-              <div className="flex justify-between text-sm font-semibold py-1">
-                <span className="text-red-500">Balance:</span>
+              <div className="flex justify-between text-sm py-1">
+                <span className="text-gray-600">Balance:</span>
                 <span
                   className={`font-semibold ${
                     Number(data?.balance) > 0

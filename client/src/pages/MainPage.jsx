@@ -131,7 +131,7 @@ const MainPage = () => {
         setInvoicesToday(count);
       }
     } catch {
-      toast.error("Something went wrong");
+      toast.error("No record found");
     } finally {
       setLoading((prev) => ({ ...prev, invoices: false }));
     }

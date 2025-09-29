@@ -22,6 +22,7 @@ const InvoicePrint = () => {
     balance,
     totalAmount,
     date,
+    lpo,
     discount,
     quotationNo,
     quotationDate,
@@ -145,7 +146,9 @@ const InvoicePrint = () => {
           {/* Customer Info */}
           <div className="flex justify-between items-center text-sm mb-4 text-blue-900">
             <div>
-              <div className="font-bold">LPO No: ____________</div>
+              <div className="font-bold">
+                LPO No: <span className="underline">{lpo}</span>
+              </div>
               <div className="font-bold">Invoice No: {invoiceNo}</div>
               <div className="font-bold">Project: {projectName}</div>
               <div className="font-bold">

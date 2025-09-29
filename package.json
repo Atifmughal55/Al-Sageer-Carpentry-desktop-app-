@@ -3,17 +3,40 @@
   "version": "1.0.0",
   "type": "module",
   "main": "electron/main.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "concurrently \"npm run dev --prefix client\" \"npm run dev --prefix server\" \"electron .\""
+  "description": "Inventory Management System built with Electron + React + Node + SQLite",
+  "author": {
+    "name": "atifmughal552@gmail.com"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix client\" \"npm run dev --prefix server\" \"electron .\"",
+    "build-react": "npm run build --prefix client",
+    "pack": "electron-builder --dir",
+    "dist": "npm run build-react && electron-builder",
+    "start": "concurrently \"npm run dev --prefix server\" \"electron .\""
+  },
+ "build": {
+  "appId": "com.alsageer.inventry",
+  "productName": "Al-Sageer-Carpentry",
+ "files": [
+  "electron/**/*",
+  "client/dist/**/*",
+  "package.json"
+],
+"extraResources": [
+  { "from": "server", "to": "server", "filter": ["**/*"] },
+  { "from": "server/node_modules", "to": "server/node_modules", "filter": ["**/*"] },
+  { "from": "client/dist", "to": "client/dist", "filter": ["**/*"] },
+  { "from": "electron/assets", "to": "assets", "filter": ["**/*"] }
+],
+"asarUnpack": ["server/**"],
+  "win": {
+    "icon": "electron/assets/icons/al-sageer.ico"
+  }
+},
   "devDependencies": {
-    "concurrently": "^9.1.2",
-    "electron": "^36.4.0"
+    "concurrently": "^9.2.1",
+    "electron": "^38.1.0",
+    "electron-builder": "^26.0.12"
   },
   "dependencies": {
     "electron-store": "^10.1.0"

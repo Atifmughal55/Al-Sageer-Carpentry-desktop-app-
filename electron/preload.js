@@ -1,17 +1,13 @@
-import { contextBridge, ipcRenderer } from "electron";
-import Store from "electron-store";
+const { contextBridge, ipcRenderer } = require("electron");
 
-// Initialize secure persistent store
-const store = new Store();
-
-// Expose print functionality to renderer
+// PDF printing
 contextBridge.exposeInMainWorld("electron", {
   printToPDF: (invoiceNo) => ipcRenderer.invoke("print-to-pdf", invoiceNo),
 });
 
-// Expose session store functionality to renderer
+// Session storage
 contextBridge.exposeInMainWorld("sessionStore", {
-  setUser: (user) => store.set("user", user),
-  getUser: () => store.get("user"),
-  clearUser: () => store.delete("user"),
+  setUser: (user) => ipcRenderer.invoke("session-store", "set", "user", user),
+  getUser: () => ipcRenderer.invoke("session-store", "get", "user"),
+  clearUser: () => ipcRenderer.invoke("session-store", "delete", "user"),
 });

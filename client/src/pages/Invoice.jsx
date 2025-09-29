@@ -12,6 +12,7 @@ const Invoice = () => {
   const [customerData, setCustomerData] = useState({});
   const [invoiceNo] = useState(generateInvoiceNo());
   const [trn, setTrn] = useState("");
+  const [lpo, setLpo] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [projectName, setProjectName] = useState("");
   const [quotationID, setQuotationID] = useState("");
@@ -171,7 +172,7 @@ const Invoice = () => {
         ...SummaryApi.createInvoice,
         data,
       });
-      console.log("data: ", data);
+
       toast.success("Invoice created successfully!");
 
       const createdInvoice = response.data?.data;
@@ -192,6 +193,7 @@ const Invoice = () => {
           totals,
           balance,
           receivedAmount,
+          lpo,
         },
       });
     } catch (error) {
@@ -256,6 +258,17 @@ const Invoice = () => {
             onChange={(e) => {
               setCustomerName(e.target.value);
               setCustomerData((prev) => ({ ...prev, name: e.target.value }));
+            }}
+          />
+        </div>
+        <div>
+          <label className="block mb-1 text-sm font-medium">LPO No:</label>
+          <input
+            type="text"
+            className="w-full px-4 py-2 border rounded-md"
+            value={lpo}
+            onChange={(e) => {
+              setLpo(e.target.value);
             }}
           />
         </div>

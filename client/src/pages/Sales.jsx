@@ -59,11 +59,9 @@ const Sales = () => {
         const processed = allInvoices.map(assignStatus);
         setSales(processed); // Only active invoices, 10 max per page
         setTotalInvoices(responseData?.pagination?.total);
-      } else {
-        toast.error("Failed to fetch invoice data.");
       }
     } catch (error) {
-      toast.error("Failed to fetch invoice data.");
+      toast.error("No invoice found.");
     } finally {
       setLoading(false);
     }
@@ -383,16 +381,6 @@ const Sales = () => {
                       <div className="flex gap-2">
                         {!sale.is_deleted ? (
                           <>
-                            <button
-                              onClick={() => {
-                                setOpenInvoiceEditModel(true);
-                                setSelectedInvoice(sale);
-                              }}
-                              className="p-2 rounded-md bg-blue-500 hover:bg-blue-600 hover:scale-105 text-white"
-                            >
-                              <MdEdit />
-                            </button>
-
                             <button
                               onClick={() => {
                                 setOpenViewModel(true),

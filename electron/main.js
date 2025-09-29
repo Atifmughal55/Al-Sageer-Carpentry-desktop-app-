@@ -1,107 +1,90 @@
-// import { app, BrowserWindow, ipcMain, screen } from "electron";
-// import path from "path";
-// import fs from "fs";
-// import { fileURLToPath } from "url";
-// import { dirname } from "path";
-
-// // Get __dirname equivalent for ES modules
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = dirname(__filename);
-
-// let mainWindow;
-
-// function createWindow() {
-//   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
-//   mainWindow = new BrowserWindow({
-//     width,
-//     height,
-//     webPreferences: {
-//       preload: path.join(__dirname, "preload.js"),
-//       contextIsolation: true,
-//       nodeIntegration: false,
-//     },
-//   });
-
-//   mainWindow.loadURL("http://localhost:5173"); // Or your React build path
-// }
-
-// // Save invoice PDF to Downloads/invoices/
-// ipcMain.handle("print-to-pdf", async (event, invoiceNo) => {
-//   try {
-//     const win = BrowserWindow.getFocusedWindow();
-
-//     const pdfData = await win.webContents.printToPDF({
-//       printBackground: true,
-//       landscape: false,
-//       marginsType: 1,
-//     });
-
-//     const downloadsPath = app.getPath("downloads");
-//     const invoicesDir = path.join(downloadsPath, "invoices");
-//     if (!fs.existsSync(invoicesDir)) {
-//       fs.mkdirSync(invoicesDir, { recursive: true });
-//     }
-
-//     const now = new Date();
-//     const formattedDate = `${String(now.getDate()).padStart(2, "0")}-${String(
-//       now.getMonth() + 1
-//     ).padStart(2, "0")}-${now.getFullYear()}`;
-
-//     const fileName = `Invoice-${invoiceNo}-${formattedDate}.pdf`;
-//     const filePath = path.join(invoicesDir, fileName);
-
-//     fs.writeFileSync(filePath, pdfData);
-
-//     return { success: true, filePath };
-//   } catch (error) {
-//     console.error("Failed to save PDF:", error);
-//     return { success: false, error: error.message };
-//   }
-// });
-
-// app.whenReady().then(createWindow);
 import { app, BrowserWindow, ipcMain, screen } from "electron";
-import path from "path";
+import path, { dirname } from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import { dirname } from "path";
+import { spawn } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-let mainWindow;
-let splashWindow;
+let mainWindow = null;
+let splashWindow = null;
+let backendProcess = null;
 
-function createWindow() {
+const isDev = !app.isPackaged;
+
+// -------------------- SINGLE INSTANCE --------------------
+if (!app.requestSingleInstanceLock()) {
+  console.log("❌ Another instance is running. Quitting...");
+  app.quit();
+}
+
+app.on("second-instance", () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+});
+
+// -------------------- BACKEND --------------------
+function startBackend() {
+  if (backendProcess) return;
+
+  const serverPath = isDev
+    ? path.join(__dirname, "../server/index.js")
+    : path.join(process.resourcesPath, "server/index.js");
+
+  console.log("🚀 Starting backend:", serverPath);
+
+  backendProcess = spawn("node", [serverPath], {
+    cwd: path.dirname(serverPath),
+    shell: false, // shell false rakho
+    detached: true, // process independent
+    windowsHide: true, // console hide
+    stdio: "ignore", // console logs ignore
+  });
+
+  backendProcess.unref(); // detach completely
+
+  backendProcess.on("error", (err) =>
+    console.error("❌ Backend spawn error:", err)
+  );
+
+  backendProcess.on("close", (code) =>
+    console.log("🛑 Backend exited with code:", code)
+  );
+}
+
+// -------------------- WINDOWS --------------------
+function createWindows() {
+  if (mainWindow) return;
+
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
-  // Splash screen
   splashWindow = new BrowserWindow({
     width,
     height,
     frame: false,
     alwaysOnTop: true,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-    },
+    webPreferences: { nodeIntegration: true, contextIsolation: false },
   });
 
   splashWindow.loadFile(path.join(__dirname, "splash.html"));
 
-  // Simulate progress (you can use real loading later)
   let progress = 0;
   const interval = setInterval(() => {
     progress += 5;
-    splashWindow.webContents.send("update-progress", progress);
+    if (!splashWindow.isDestroyed())
+      splashWindow.webContents.send("update-progress", progress);
+
     if (progress >= 100) {
       clearInterval(interval);
 
-      // Main window
       mainWindow = new BrowserWindow({
         width,
         height,
         show: false,
+        autoHideMenuBar: true,
         webPreferences: {
           preload: path.join(__dirname, "preload.js"),
           contextIsolation: true,
@@ -109,14 +92,59 @@ function createWindow() {
         },
       });
 
-      mainWindow.loadURL("http://localhost:5173");
+      const frontendURL = isDev
+        ? "http://localhost:5173"
+        : `file://${path.join(
+            process.resourcesPath,
+            "client/dist/index.html"
+          )}`;
+
+      mainWindow.loadURL(frontendURL);
 
       mainWindow.webContents.once("did-finish-load", () => {
-        splashWindow.close();
+        if (!splashWindow.isDestroyed()) splashWindow.close();
         mainWindow.show();
       });
     }
-  }, 100); // ~2 seconds to reach 100%
+  }, 100);
 }
 
-app.whenReady().then(createWindow);
+// -------------------- IPC --------------------
+ipcMain.handle("print-to-pdf", async (event, invoiceNo) => {
+  try {
+    const win = BrowserWindow.getFocusedWindow();
+    const pdfData = await win.webContents.printToPDF({ printBackground: true });
+    const downloadsPath = app.getPath("downloads");
+    const invoicesDir = path.join(downloadsPath, "invoices");
+    if (!fs.existsSync(invoicesDir))
+      fs.mkdirSync(invoicesDir, { recursive: true });
+
+    const now = new Date();
+    const fileName = `Invoice-${invoiceNo}-${now.getFullYear()}-${
+      now.getMonth() + 1
+    }-${now.getDate()}.pdf`;
+    const filePath = path.join(invoicesDir, fileName);
+    fs.writeFileSync(filePath, pdfData);
+
+    return { success: true, filePath };
+  } catch (err) {
+    console.error(err);
+    return { success: false, error: err.message };
+  }
+});
+
+// -------------------- APP LIFECYCLE --------------------
+app.whenReady().then(() => {
+  startBackend();
+  createWindows();
+});
+
+app.on("before-quit", () => {
+  if (backendProcess) backendProcess.kill();
+});
+
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});
+
+app.on("activate", () => createWindows());

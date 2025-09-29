@@ -240,7 +240,7 @@ const QuotationPrint = () => {
 
           {/* Footer */}
           <div className="flex justify-between">
-            <div className="text-xs font-semibold text-blue-900">
+            <div className="text-xs">
               <div>Receiver's Sign توقيع المستلم</div>
               <div className="mt-6 border-t w-40"></div>
             </div>
